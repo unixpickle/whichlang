@@ -129,7 +129,21 @@ func (g *GithubClient) request(u string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ioutil.ReadAll(res.Body)
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(body, &raw); err == nil {
+		if message, ok := raw["message"]; ok {
+			if s, ok := message.(string); ok {
+				return nil, errors.New(s)
+			}
+		}
+	}
+
+	return body, nil
 }
 
 type langRepoList struct {
