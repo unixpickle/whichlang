@@ -1,21 +1,29 @@
-package main
+package whichlang
 
 import (
 	"strings"
 	"unicode"
 )
 
-type charClass int
+// A Frequencies object represents a histogram of word occurrences in a document.
+// Each word is mapped to a number indicating the number of times it occurred.
+//
+// Frequency counts are floating points rather than integers to allow Frequencies objects to be
+// averaged and manipulated in various ways.
+type Frequencies map[string]float64
 
-const (
-	charClassLetter charClass = iota
-	charClassNumber
-	charClassSpace
-	charClassSymbol
-)
-
-func Tokenize(contents string) map[string]float64 {
-	res := map[string]float64{}
+// ComputeFrequencies returns a frequency map of all the words which appear in a string.
+// Two different types of words are detected:
+//
+// - Heterogeneous words: any strings which appear surrounded by whitespace.
+// - Homogeneous words: strings of one particular character type (e.g. letter) which may appear
+//   inside a larger heterogenous keyword.
+//
+// Both types of words are weighted equally in the result.
+// No re-counting will occur (e.g. "this is a test" has four homogeneous words and 0 heterogeneous
+// ones).
+func ComputeFrequencies(contents string) Frequencies {
+	res := Frequencies{}
 	for _, t := range heterogeneousTokens(contents) {
 		res[t] += 1
 	}
@@ -57,6 +65,15 @@ func homogeneousTokens(contents string) []string {
 	}
 	return tokens
 }
+
+type charClass int
+
+const (
+	charClassLetter charClass = iota
+	charClassNumber
+	charClassSpace
+	charClassSymbol
+)
 
 func classForRune(r rune) charClass {
 	if unicode.IsLetter(r) {
