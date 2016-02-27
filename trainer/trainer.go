@@ -85,8 +85,8 @@ func canonicalClassifier(c *svm.LinearClassifier, maxFeatures int,
 }
 
 func takeBestFeatures(f floatIntPairList, s svm.Sample, maxFeatures int) svm.Sample {
-	if maxFeatures >= len(s.V) {
-		return s
+	if maxFeatures > len(s.V) {
+		maxFeatures = len(s.V)
 	}
 	res := make([]float64, maxFeatures)
 	for i := 0; i < maxFeatures; i++ {
