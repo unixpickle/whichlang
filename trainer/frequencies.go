@@ -7,7 +7,7 @@ import (
 	"github.com/unixpickle/whichlang"
 )
 
-func getFrequencies(d SampleDir) map[string][]whichlang.Frequencies {
+func GetFrequencies(d SampleDir) map[string][]whichlang.Frequencies {
 	langs, err := d.Languages()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -37,4 +37,3 @@ func getLanguageFrequencies(d SampleDir, lang string) []whichlang.Frequencies {
 	}
 	return res
 }
-
