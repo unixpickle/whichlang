@@ -10,9 +10,9 @@ import (
 )
 
 var gradientSolver = svm.GradientDescentSolver{
-	Steps:    10,
+	Steps:    1000,
 	StepSize: 0.01,
-	Tradeoff: 0.1,
+	Tradeoff: 0.0001,
 }
 
 func GenerateClassifiers(s Samples, maxFeatures int) map[string]*whichlang.Classifier {
