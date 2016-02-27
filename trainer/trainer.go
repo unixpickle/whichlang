@@ -65,7 +65,7 @@ func canonicalClassifier(c *svm.LinearClassifier, maxFeatures int,
 
 	res := &whichlang.Classifier{
 		Keywords:  map[string]float64{},
-		Threshold: solution.Threshold,
+		Threshold: -solution.Threshold,
 	}
 
 	for i, weight := range solution.HyperplaneNormal {
