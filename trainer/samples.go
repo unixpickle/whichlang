@@ -5,6 +5,8 @@ import (
 	"github.com/unixpickle/whichlang"
 )
 
+// Samples stores the vector representations of whichlang.Frequencies, since the vector
+// representations can be handed off to the SVM solver.
 type Samples struct {
 	Samples map[string][]svm.Sample
 	Words   []string

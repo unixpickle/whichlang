@@ -22,9 +22,11 @@ func main() {
 
 	fmt.Println("Computing frequencies...")
 	freqs := GetFrequencies(SampleDir(os.Args[1]))
+	RemoveContextualWords(freqs)
 	samples := NewSamples(freqs)
 
-	fmt.Println("Generating classifiers...")
+	fmt.Println("Generating classifiers (dimensionality is " + strconv.Itoa(len(samples.Words)) +
+		")...")
 	classifiers := GenerateClassifiers(samples, maxKeywords)
 
 	output, err := json.Marshal(classifiers)
