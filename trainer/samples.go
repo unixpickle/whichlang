@@ -34,14 +34,16 @@ func NewSamples(frequencies map[string][]whichlang.Frequencies) Samples {
 		Words:   wordList,
 	}
 
+	sampleIndex := 1
 	for lang, list := range frequencies {
 		sampleList := make([]svm.Sample, len(list))
 		for i, freqs := range list {
-			sample := make(svm.Sample, len(wordList))
+			sampleVec := make([]float64, len(wordList))
 			for word, freq := range freqs {
-				sample[wordIndices[word]] = freq
+				sampleVec[wordIndices[word]] = freq
 			}
-			sampleList[i] = sample
+			sampleList[i] = svm.Sample{V: sampleVec, UserInfo: sampleIndex}
+			sampleIndex++
 		}
 		res.Samples[lang] = sampleList
 	}

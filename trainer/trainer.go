@@ -17,20 +17,22 @@ var gradientSolver = svm.GradientDescentSolver{
 
 func GenerateClassifiers(s Samples, maxFeatures int) map[string]*whichlang.Classifier {
 	res := map[string]*whichlang.Classifier{}
+	k := svm.CachedKernel(svm.LinearKernel)
 	for lang := range s.Samples {
 		fmt.Println(" - generating classifier for:", lang)
-		svmClassifier, problem := languageSVMClassifier(lang, s)
+		svmClassifier, problem := languageSVMClassifier(lang, s, k)
 		classifier := canonicalClassifier(svmClassifier, maxFeatures, problem, s)
 		res[lang] = classifier
 	}
 	return res
 }
 
-func languageSVMClassifier(lang string, s Samples) (sol *svm.LinearClassifier, p *svm.Problem) {
+func languageSVMClassifier(lang string, s Samples,
+	k svm.Kernel) (sol *svm.LinearClassifier, p *svm.Problem) {
 	p = &svm.Problem{
 		Positives: make([]svm.Sample, len(s.Samples[lang])),
 		Negatives: make([]svm.Sample, 0),
-		Kernel:    svm.LinearKernel,
+		Kernel:    k,
 	}
 
 	copy(p.Positives, s.Samples[lang])
@@ -48,8 +50,8 @@ func languageSVMClassifier(lang string, s Samples) (sol *svm.LinearClassifier, p
 
 func canonicalClassifier(c *svm.LinearClassifier, maxFeatures int,
 	p *svm.Problem, s Samples) *whichlang.Classifier {
-	features := make(floatIntPairList, len(c.HyperplaneNormal))
-	for i, f := range c.HyperplaneNormal {
+	features := make(floatIntPairList, len(c.HyperplaneNormal.V))
+	for i, f := range c.HyperplaneNormal.V {
 		features[i] = floatIntPair{f, i}
 	}
 	sort.Sort(features)
@@ -61,6 +63,12 @@ func canonicalClassifier(c *svm.LinearClassifier, maxFeatures int,
 		p.Negatives[i] = takeBestFeatures(features, sample, maxFeatures)
 	}
 
+	// We must use a new cached kernel, since the trimmed Samples have the same UserInfo values as
+	// their untrimmed counterparts.
+	// This is acceptable, because we probably haven't seen these exact trimmed vectors before, so
+	// trying to re-use a cache for them is rather pointless.
+	p.Kernel = svm.CachedKernel(svm.LinearKernel)
+
 	solution := gradientSolver.Solve(p).Linearize()
 
 	res := &whichlang.Classifier{
@@ -68,7 +76,7 @@ func canonicalClassifier(c *svm.LinearClassifier, maxFeatures int,
 		Threshold: -solution.Threshold,
 	}
 
-	for i, weight := range solution.HyperplaneNormal {
+	for i, weight := range solution.HyperplaneNormal.V {
 		word := s.Words[features[i].i]
 		res.Keywords[word] = weight
 	}
@@ -77,14 +85,14 @@ func canonicalClassifier(c *svm.LinearClassifier, maxFeatures int,
 }
 
 func takeBestFeatures(f floatIntPairList, s svm.Sample, maxFeatures int) svm.Sample {
-	if maxFeatures >= len(s) {
+	if maxFeatures >= len(s.V) {
 		return s
 	}
-	res := make(svm.Sample, maxFeatures)
+	res := make([]float64, maxFeatures)
 	for i := 0; i < maxFeatures; i++ {
-		res[i] = s[f[i].i]
+		res[i] = s.V[f[i].i]
 	}
-	return res
+	return svm.Sample{V: res, UserInfo: s.UserInfo}
 }
 
 type floatIntPair struct {
