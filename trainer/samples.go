@@ -1,6 +1,8 @@
 package main
 
 import (
+	"math"
+
 	"github.com/unixpickle/weakai/svm"
 	"github.com/unixpickle/whichlang"
 )
@@ -39,8 +41,14 @@ func NewSamples(frequencies map[string][]whichlang.Frequencies) Samples {
 		sampleList := make([]svm.Sample, len(list))
 		for i, freqs := range list {
 			sampleVec := make([]float64, len(wordList))
+			var magSquared float64
 			for word, freq := range freqs {
 				sampleVec[wordIndices[word]] = freq
+				magSquared += freq * freq
+			}
+			scaler := 1 / math.Sqrt(magSquared)
+			for i, x := range sampleVec {
+				sampleVec[i] = x * scaler
 			}
 			sampleList[i] = svm.Sample{V: sampleVec, UserInfo: sampleIndex}
 			sampleIndex++

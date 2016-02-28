@@ -1,0 +1,26 @@
+- generating classifier for: Haskell
+total of 13 errors: 13 false neg 0 false pos out of 30 positives.
+- generating classifier for: Ruby
+total of 18 errors: 18 false neg 0 false pos out of 30 positives.
+- generating classifier for: Python
+total of 21 errors: 21 false neg 0 false pos out of 29 positives.
+- generating classifier for: TeX
+total of 1 errors: 1 false neg 0 false pos out of 29 positives.
+- generating classifier for: Matlab
+total of 11 errors: 11 false neg 0 false pos out of 30 positives.
+- generating classifier for: Perl
+total of 16 errors: 16 false neg 0 false pos out of 18 positives.
+- generating classifier for: Swift
+total of 23 errors: 23 false neg 0 false pos out of 27 positives.
+- generating classifier for: JavaScript
+total of 25 errors: 25 false neg 0 false pos out of 30 positives.
+- generating classifier for: PHP
+total of 11 errors: 11 false neg 0 false pos out of 30 positives.
+- generating classifier for: VimL
+total of 7 errors: 7 false neg 0 false pos out of 27 positives.
+- generating classifier for: Scala
+total of 26 errors: 26 false neg 0 false pos out of 29 positives.
+- generating classifier for: CoffeeScript
+total of 29 errors: 29 false neg 0 false pos out of 30 positives.
+- generating classifier for: Go
+total of 25 errors: 25 false neg 0 false pos out of 29 positives.
