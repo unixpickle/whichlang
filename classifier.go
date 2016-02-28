@@ -1,98 +1,58 @@
 package whichlang
 
-import (
-	"math"
-	"sort"
-)
+import "math"
 
-type Sample struct {
-	// Vector is a normalized vector of word frequencies, corresponding to words in the classifier's
-	// Keywords list
-	Vector []float64
+type ClassifierNode struct {
+	Leaf               bool
+	LeafClassification string
 
-	Language string
+	Keyword   string
+	Threshold float64
+
+	FalseBranch *ClassifierNode
+	TrueBranch  *ClassifierNode
 }
 
-func (s Sample) distance(v []float64) float64 {
-	var dot float64
-	for i, x := range s.Vector {
-		dot += x * v[i]
+func (c *ClassifierNode) leafCount() int {
+	if c.Leaf {
+		return 1
 	}
-	return 1 - dot
+	return c.FalseBranch.leafCount() + c.TrueBranch.leafCount()
 }
 
-// A Classifier uses k-nearest-neighbors to figure out which language novel samples are most likely
-// written in.
+// A Classifier uses an identification tree to classify a piece of code.
 type Classifier struct {
-	Keywords     []string
-	Samples      []Sample
-	NumNeighbors int
+	Keywords []string
+	TreeRoot *ClassifierNode
 }
 
 func (c *Classifier) Classify(f Frequencies) string {
-	vec := c.computeVector(f)
-	pairs := make(langDistPairList, len(c.Samples))
-	for i, sample := range c.Samples {
-		pairs[i] = langDistPair{
-			distance: sample.distance(vec),
-			language: sample.Language,
+	normalized := c.normalizeKeywords(f)
+	node := c.TreeRoot
+	for !node.Leaf {
+		if normalized[node.Keyword] > node.Threshold {
+			node = node.TrueBranch
+		} else {
+			node = node.FalseBranch
 		}
 	}
-	sort.Sort(pairs)
-
-	languageWeights := map[string]float64{}
-	for i := 0; i < len(pairs) && i < c.NumNeighbors; i++ {
-		pair := pairs[i]
-		dist := pair.distance
-		if dist == 0 {
-			return pair.language
-		}
-		languageWeights[pair.language] += 1 / dist
-	}
-
-	var bestWeight float64
-	var bestLang string
-
-	for lang, weight := range languageWeights {
-		if weight > bestWeight || bestLang == "" {
-			bestLang = lang
-			bestWeight = weight
-		}
-	}
-
-	return bestLang
+	return node.LeafClassification
 }
 
-func (c *Classifier) computeVector(f Frequencies) []float64 {
-	res := make([]float64, len(c.Keywords))
+func (c *Classifier) LeafCount() int {
+	return c.TreeRoot.leafCount()
+}
+
+func (c *Classifier) normalizeKeywords(f Frequencies) Frequencies {
 	var mag2 float64
-	for i, word := range c.Keywords {
+	for _, word := range c.Keywords {
 		val := f[word]
 		mag2 += val * val
-		res[i] = val
 	}
-	normalizer := math.Sqrt(mag2)
-	for i, x := range res {
-		res[i] = x / normalizer
+	scaler := 1 / math.Sqrt(mag2)
+	res := map[string]float64{}
+	for _, word := range c.Keywords {
+		res[word] *= f[word] * scaler
 	}
 	return res
-}
-
-type langDistPair struct {
-	distance float64
-	language string
-}
-
-type langDistPairList []langDistPair
-
-func (l langDistPairList) Len() int {
-	return len(l)
-}
-
-func (l langDistPairList) Less(i, j int) bool {
-	return l[i].distance < l[j].distance
-}
-
-func (l langDistPairList) Swap(i, j int) {
-	l[i], l[j] = l[j], l[i]
 }
