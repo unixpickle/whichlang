@@ -13,6 +13,7 @@ body {
   border-radius: 5px;
   font-size: 14px;
   background-color: #ffffd8;
+  font-family: monospace;
 }
 
 #text-input:focus {
