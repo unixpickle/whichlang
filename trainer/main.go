@@ -10,26 +10,24 @@ import (
 
 func main() {
 	if len(os.Args) != 4 {
-		fmt.Fprintln(os.Stderr, "Usage: trainer <sample dir> <max keywords> <output.json>")
+		fmt.Fprintln(os.Stderr, "Usage: trainer <sample dir> <num neighbors> <output.json>")
 		os.Exit(1)
 	}
 
-	maxKeywords, err := strconv.Atoi(os.Args[2])
+	numNeighbors, err := strconv.Atoi(os.Args[2])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Invalid max keywords:", os.Args[2])
+		fmt.Fprintln(os.Stderr, "Invalid neighbor count:", os.Args[2])
 		os.Exit(1)
 	}
 
-	fmt.Println("Computing frequencies...")
 	freqs := GetFrequencies(SampleDir(os.Args[1]))
-	RemoveContextualWords(freqs)
-	samples := NewSamples(freqs)
+	RemoveContextualWords(freqs, numNeighbors)
+	classifier := GenerateClassifier(freqs)
+	classifier.NumNeighbors = numNeighbors
 
-	fmt.Println("Generating classifiers (dimensionality is " + strconv.Itoa(len(samples.Words)) +
-		")...")
-	classifiers := GenerateClassifiers(samples, maxKeywords)
+	fmt.Println("Generated classifier with", len(classifier.Keywords), "keywords.")
 
-	output, err := json.Marshal(classifiers)
+	output, err := json.Marshal(classifier)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Failed to encode JSON:", err)
 		os.Exit(1)

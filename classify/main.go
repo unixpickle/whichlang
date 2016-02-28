@@ -11,7 +11,7 @@ import (
 
 func main() {
 	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "Usage: classify <classifiers.json> <file>")
+		fmt.Fprintln(os.Stderr, "Usage: classify <classifier.json> <file>")
 		os.Exit(1)
 	}
 
@@ -21,9 +21,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	var classifiers map[string]*whichlang.Classifier
-	if err := json.Unmarshal(classifierData, &classifiers); err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to decode classifiers:", err)
+	var classifier whichlang.Classifier
+	if err := json.Unmarshal(classifierData, &classifier); err != nil {
+		fmt.Fprintln(os.Stderr, "Failed to decode classifier:", err)
 		os.Exit(1)
 	}
 
@@ -34,14 +34,6 @@ func main() {
 	}
 
 	freqs := whichlang.ComputeFrequencies(string(contents))
-	matched := false
-	for lang, classifier := range classifiers {
-		if classifier.Classify(freqs) {
-			fmt.Println("Match for", lang)
-			matched = true
-		}
-	}
-	if !matched {
-		fmt.Println("No matches found.")
-	}
+	language := classifier.Classify(freqs)
+	fmt.Println("Code appears to be", language)
 }

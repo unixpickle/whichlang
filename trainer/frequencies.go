@@ -7,24 +7,21 @@ import (
 	"github.com/unixpickle/whichlang"
 )
 
-// RemoveContextualWords removes all words which only occur in one file for a given language.
-func RemoveContextualWords(f map[string][]whichlang.Frequencies) {
+// RemoveContextualWords removes all words which only occur in a few files for a given language.
+func RemoveContextualWords(f map[string][]whichlang.Frequencies, maxFiles int) {
 	for _, samples := range f {
-		seenWords := map[string]whichlang.Frequencies{}
+		seenWords := map[string]int{}
 		for _, sample := range samples {
 			for word := range sample {
-				if _, seen := seenWords[word]; !seen {
-					seenWords[word] = sample
-				} else {
-					seenWords[word] = nil
-				}
+				seenWords[word]++
 			}
 		}
-		for seenWord, sample := range seenWords {
-			if sample == nil {
-				continue
+		for seenWord, count := range seenWords {
+			if count <= maxFiles {
+				for _, sample := range samples {
+					delete(sample, seenWord)
+				}
 			}
-			delete(sample, seenWord)
 		}
 	}
 }
