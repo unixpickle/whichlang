@@ -52,7 +52,7 @@ func (c *Classifier) normalizeKeywords(f Frequencies) Frequencies {
 	scaler := 1 / math.Sqrt(mag2)
 	res := map[string]float64{}
 	for _, word := range c.Keywords {
-		res[word] *= f[word] * scaler
+		res[word] = f[word] * scaler
 	}
 	return res
 }
