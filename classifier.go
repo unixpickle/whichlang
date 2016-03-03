@@ -1,7 +1,5 @@
 package whichlang
 
-import "math"
-
 type ClassifierNode struct {
 	Leaf               bool
 	LeafClassification string
@@ -44,12 +42,11 @@ func (c *Classifier) LeafCount() int {
 }
 
 func (c *Classifier) normalizeKeywords(f Frequencies) Frequencies {
-	var mag2 float64
+	var totalSum float64
 	for _, word := range c.Keywords {
-		val := f[word]
-		mag2 += val * val
+		totalSum += f[word]
 	}
-	scaler := 1 / math.Sqrt(mag2)
+	scaler := 1 / totalSum
 	res := map[string]float64{}
 	for _, word := range c.Keywords {
 		res[word] = f[word] * scaler

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -74,14 +73,14 @@ func GenerateClassifier(freqs map[string][]whichlang.Frequencies) *whichlang.Cla
 }
 
 func normalizeKeywords(f whichlang.Frequencies, k []string) whichlang.Frequencies {
-	var mag2 float64
+	var totalSum float64
 	for _, word := range k {
-		mag2 += f[word] * f[word]
+		totalSum += f[word]
 	}
-	if mag2 == 0 {
-		mag2 = 1
+	if totalSum == 0 {
+		totalSum = 1
 	}
-	scaler := 1 / math.Sqrt(mag2)
+	scaler := 1 / totalSum
 
 	res := whichlang.Frequencies{}
 	for _, word := range k {
