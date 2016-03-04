@@ -69,6 +69,7 @@ func GenerateClassifier(freqs map[string][]whichlang.Frequencies) *whichlang.Cla
 	fmt.Println(tree)
 
 	res.TreeRoot = convertTree(tree)
+	centerThresholds(res, freqs)
 	return res
 }
 
@@ -116,6 +117,55 @@ func convertTree(t *idtrees.TreeNode) *whichlang.ClassifierNode {
 	res.FalseBranch = convertTree(t.Branches[idtrees.BoolValue(false)])
 	res.TrueBranch = convertTree(t.Branches[idtrees.BoolValue(true)])
 	return res
+}
+
+func centerThresholds(c *whichlang.Classifier, f map[string][]whichlang.Frequencies) {
+	vecs := []whichlang.Frequencies{}
+	for _, list := range f {
+		for _, wordMap := range list {
+			freqMap := normalizeKeywords(wordMap, c.Keywords)
+			vecs = append(vecs, freqMap)
+		}
+	}
+	centerThresholdsForNode(vecs, c.TreeRoot)
+}
+
+func centerThresholdsForNode(vecs []whichlang.Frequencies, node *whichlang.ClassifierNode) {
+	if node.Leaf {
+		return
+	}
+	var lowerSide float64
+	var upperSide float64
+	for i, vec := range vecs {
+		if vec[node.Keyword] <= node.Threshold {
+			if i == 0 || vec[node.Keyword] > lowerSide {
+				lowerSide = node.Threshold
+			}
+		} else {
+			if i == 0 || vec[node.Keyword] < upperSide {
+				upperSide = node.Threshold
+			}
+		}
+	}
+	node.Threshold = (lowerSide + upperSide) / 2
+
+	t, f := splitOnNode(vecs, node)
+	centerThresholdsForNode(t, node.TrueBranch)
+	centerThresholdsForNode(f, node.FalseBranch)
+}
+
+func splitOnNode(vecs []whichlang.Frequencies,
+	node *whichlang.ClassifierNode) (t, f []whichlang.Frequencies) {
+	t = make([]whichlang.Frequencies, 0, len(vecs))
+	f = make([]whichlang.Frequencies, 0, len(vecs))
+	for _, v := range vecs {
+		if v[node.Keyword] > node.Threshold {
+			t = append(t, v)
+		} else {
+			f = append(f, v)
+		}
+	}
+	return
 }
 
 type treeEntry struct {
