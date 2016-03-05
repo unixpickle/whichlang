@@ -10,8 +10,8 @@ import (
 )
 
 var gradientSolver = svm.GradientDescentSolver{
-	Steps:    1000,
-	StepSize: 0.01,
+	Steps:    100,
+	StepSize: 0.1,
 	Tradeoff: 0.0001,
 }
 
@@ -21,6 +21,25 @@ func GenerateClassifiers(s Samples, maxFeatures int) map[string]*whichlang.Class
 	for lang := range s.Samples {
 		fmt.Println(" - generating classifier for:", lang)
 		svmClassifier, problem := languageSVMClassifier(lang, s, k)
+
+		// The following code dumps information about success rates, etc.
+		/*
+			var posErrors, negErrors int
+			for _, positive := range problem.Positives {
+				if !svmClassifier.Classify(positive) {
+					posErrors++
+				}
+			}
+			for _, negative := range problem.Negatives {
+				if svmClassifier.Classify(negative) {
+					fmt.Println("wrong for", negative)
+					negErrors++
+				}
+			}
+			fmt.Println("errors:", posErrors, "pos and", negErrors, "neg.")
+			continue
+		*/
+
 		classifier := canonicalClassifier(svmClassifier, maxFeatures, problem, s)
 		res[lang] = classifier
 	}

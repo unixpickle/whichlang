@@ -29,6 +29,26 @@ func RemoveContextualWords(f map[string][]whichlang.Frequencies) {
 	}
 }
 
+// NormalizeFrequencies divides every value in each frequency map by the total number of words in
+// the document.
+func NormalizeFrequencies(fMap map[string][]whichlang.Frequencies) {
+	for _, samples := range fMap {
+		for _, f := range samples {
+			var totalSum float64
+			for _, val := range f {
+				totalSum += val
+			}
+			if totalSum == 0 {
+				totalSum = 1
+			}
+			scaler := 1 / totalSum
+			for word, freq := range f {
+				f[word] = freq * scaler
+			}
+		}
+	}
+}
+
 // GetFrequencies processes all the samples in a given sample directory.
 func GetFrequencies(d SampleDir) map[string][]whichlang.Frequencies {
 	langs, err := d.Languages()

@@ -22,6 +22,7 @@ func main() {
 
 	fmt.Println("Computing frequencies...")
 	freqs := GetFrequencies(SampleDir(os.Args[1]))
+	NormalizeFrequencies(freqs)
 	RemoveContextualWords(freqs)
 	samples := NewSamples(freqs)
 

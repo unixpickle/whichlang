@@ -1,7 +1,5 @@
 package whichlang
 
-import "math"
-
 type Classifier struct {
 	// Keywords is a weighted list of keywords for this classifier, with potentially negative
 	// weights.
@@ -18,11 +16,17 @@ func (c *Classifier) Classify(f Frequencies) bool {
 
 func (c *Classifier) WeightedSum(f Frequencies) float64 {
 	var sum float64
-	var magSquared float64
 	for keyword, weight := range c.Keywords {
 		sum += weight * f[keyword]
-		magSquared += math.Pow(f[keyword], 2)
 	}
-	sum /= math.Sqrt(magSquared)
-	return sum
+
+	var freqTotal float64
+	for _, freq := range f {
+		freqTotal += freq
+	}
+	if freqTotal == 0 {
+		freqTotal = 1
+	}
+
+	return sum / freqTotal
 }
