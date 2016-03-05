@@ -14,6 +14,7 @@ func main() {
 	}
 
 	freqs := GetFrequencies(SampleDir(os.Args[1]))
+	NormalizeFrequencies(freqs)
 	RemoveContextualWords(freqs, 5)
 	classifier := GenerateClassifier(freqs)
 

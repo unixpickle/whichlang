@@ -11,37 +11,30 @@ import (
 )
 
 func GenerateClassifier(freqs map[string][]whichlang.Frequencies) *whichlang.Classifier {
-	words := map[string]bool{}
-	sampleCount := 0
-	for _, list := range freqs {
-		for _, wordMap := range list {
-			for word := range wordMap {
-				words[word] = true
-				sampleCount++
+	allWords := map[string]bool{}
+	entryCount := 0
+	for _, samples := range freqs {
+		for _, sample := range samples {
+			for word := range sample {
+				allWords[word] = true
 			}
+			entryCount++
 		}
 	}
 
-	res := &whichlang.Classifier{
-		Keywords: make([]string, 0, len(words)),
-	}
+	res := &whichlang.Classifier{}
 	dataSet := &idtrees.DataSet{
-		Entries: make([]idtrees.Entry, 0, sampleCount),
+		Entries: make([]idtrees.Entry, 0, entryCount),
 		Fields:  make([]idtrees.Field, 0),
-	}
-
-	for word := range words {
-		res.Keywords = append(res.Keywords, word)
 	}
 
 	fmt.Println("Generating entries...")
 
 	for lang, list := range freqs {
 		for _, wordMap := range list {
-			freqMap := normalizeKeywords(wordMap, res.Keywords)
 			entry := &treeEntry{
 				language:    lang,
-				freqs:       freqMap,
+				freqs:       wordMap,
 				fieldValues: []idtrees.Value{},
 			}
 			dataSet.Entries = append(dataSet.Entries, entry)
@@ -49,7 +42,7 @@ func GenerateClassifier(freqs map[string][]whichlang.Frequencies) *whichlang.Cla
 	}
 
 	fmt.Println("Generating fields...")
-	for _, word := range res.Keywords {
+	for word := range allWords {
 		idtrees.CreateBisectingFloatFields(dataSet, func(e idtrees.Entry) float64 {
 			return e.(*treeEntry).freqs[word]
 		}, func(e idtrees.Entry, v idtrees.Value) {
@@ -70,23 +63,6 @@ func GenerateClassifier(freqs map[string][]whichlang.Frequencies) *whichlang.Cla
 
 	res.TreeRoot = convertTree(tree)
 	centerThresholds(res, freqs)
-	return res
-}
-
-func normalizeKeywords(f whichlang.Frequencies, k []string) whichlang.Frequencies {
-	var totalSum float64
-	for _, word := range k {
-		totalSum += f[word]
-	}
-	if totalSum == 0 {
-		totalSum = 1
-	}
-	scaler := 1 / totalSum
-
-	res := whichlang.Frequencies{}
-	for _, word := range k {
-		res[word] = f[word] * scaler
-	}
 	return res
 }
 
@@ -123,8 +99,7 @@ func centerThresholds(c *whichlang.Classifier, f map[string][]whichlang.Frequenc
 	vecs := []whichlang.Frequencies{}
 	for _, list := range f {
 		for _, wordMap := range list {
-			freqMap := normalizeKeywords(wordMap, c.Keywords)
-			vecs = append(vecs, freqMap)
+			vecs = append(vecs, wordMap)
 		}
 	}
 	centerThresholdsForNode(vecs, c.TreeRoot)

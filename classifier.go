@@ -20,7 +20,6 @@ func (c *ClassifierNode) leafCount() int {
 
 // A Classifier uses an identification tree to classify a piece of code.
 type Classifier struct {
-	Keywords []string
 	TreeRoot *ClassifierNode
 }
 
@@ -43,13 +42,16 @@ func (c *Classifier) LeafCount() int {
 
 func (c *Classifier) normalizeKeywords(f Frequencies) Frequencies {
 	var totalSum float64
-	for _, word := range c.Keywords {
-		totalSum += f[word]
+	for _, val := range f {
+		totalSum += val
+	}
+	if totalSum == 0 {
+		totalSum = 1
 	}
 	scaler := 1 / totalSum
 	res := map[string]float64{}
-	for _, word := range c.Keywords {
-		res[word] = f[word] * scaler
+	for key, val := range f {
+		res[key] = val * scaler
 	}
 	return res
 }
