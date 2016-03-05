@@ -2,6 +2,26 @@ package main
 
 import "github.com/unixpickle/whichlang"
 
+// ComputeConfidences sets the LeafConfidence value on each leaf.
+func ComputeConfidences(c *whichlang.Classifier, f map[string][]whichlang.Frequencies) {
+	for lang, list := range f {
+		computeConfidenceForLang(list, len(list), lang, c.TreeRoot)
+	}
+}
+
+func computeConfidenceForLang(vecs []whichlang.Frequencies, totalLen int, lang string,
+	node *whichlang.ClassifierNode) {
+	if node.Leaf {
+		if node.LeafClassification == lang {
+			node.LeafConfidence = float64(len(vecs)) / float64(totalLen)
+		}
+		return
+	}
+	t, f := splitOnNode(vecs, node)
+	computeConfidenceForLang(t, totalLen, lang, node.TrueBranch)
+	computeConfidenceForLang(f, totalLen, lang, node.FalseBranch)
+}
+
 // CenterThresholds makes sure that every threshold lies directly between the maximum and minimum
 // possible thresholds that would still split the samples the exact same way.
 func CenterThresholds(c *whichlang.Classifier, f map[string][]whichlang.Frequencies) {

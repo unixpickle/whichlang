@@ -26,9 +26,11 @@ func main() {
 			return
 		}
 		freqs := whichlang.ComputeFrequencies(string(contents))
-		lang := classifier.Classify(freqs)
-		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte(lang))
+		lang, confidence := classifier.Classify(freqs)
+		jsonObj := map[string]interface{}{"lang": lang, "confidence": confidence}
+		jsonData, _ := json.Marshal(jsonObj)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonData)
 	})
 	http.Handle("/", http.FileServer(http.Dir(assets)))
 

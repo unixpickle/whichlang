@@ -2,8 +2,11 @@
 
   var textInput;
   var request = null;
+  var classificationLabel;
 
   function classify() {
+    classificationLabel.style.display = 'block';
+    classificationLabel.innerText = 'Loading...';
     if (request !== null) {
       request.abort();
     }
@@ -20,13 +23,16 @@
   }
 
   function handleClassification(classification) {
-    var label = document.getElementById('classification');
-    label.innerText = 'Classification: ' + classification;
-    label.style.display = 'block';
+    var obj = JSON.parse(classification);
+
+    classificationLabel.innerText = 'Classification: ' + obj.lang +
+      ' (confidence=' + obj.confidence + ')';
+    classificationLabel.style.display = 'block';
   }
 
   window.addEventListener('load', function() {
     textInput = document.getElementById('text-input');
+    classificationLabel = document.getElementById('classification');
     var classifyButton = document.getElementById('classify-button');
     classifyButton.addEventListener('click', classify);
   });

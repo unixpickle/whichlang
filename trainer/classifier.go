@@ -62,7 +62,8 @@ func GenerateClassifier(freqs map[string][]whichlang.Frequencies) *whichlang.Cla
 	fmt.Println(tree)
 
 	res.TreeRoot = convertTree(tree)
-	centerThresholds(res, freqs)
+	CenterThresholds(res, freqs)
+	ComputeConfidences(res, freqs)
 	return res
 }
 

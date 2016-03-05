@@ -3,6 +3,7 @@ package whichlang
 type ClassifierNode struct {
 	Leaf               bool
 	LeafClassification string
+	LeafConfidence     float64
 
 	Keyword   string
 	Threshold float64
@@ -23,7 +24,7 @@ type Classifier struct {
 	TreeRoot *ClassifierNode
 }
 
-func (c *Classifier) Classify(f Frequencies) string {
+func (c *Classifier) Classify(f Frequencies) (lang string, confidence float64) {
 	normalized := c.normalizeKeywords(f)
 	node := c.TreeRoot
 	for !node.Leaf {
@@ -33,7 +34,7 @@ func (c *Classifier) Classify(f Frequencies) string {
 			node = node.FalseBranch
 		}
 	}
-	return node.LeafClassification
+	return node.LeafClassification, node.LeafConfidence
 }
 
 func (c *Classifier) LeafCount() int {
