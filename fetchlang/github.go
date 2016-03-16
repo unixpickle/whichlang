@@ -52,44 +52,44 @@ func (g *GithubClient) LanguageRepositories(lang string) ([]string, error) {
 // occurred.
 func (g *GithubClient) FirstFile(repo string, minFileSize int,
 	extensions []string) ([]byte, error) {
-	var match *entity
-	searchPaths := []string{"/"}
+	return g.firstFileSearch(repo, minFileSize, extensions, "/")
+}
 
-BreadthFirstSearch:
-	for len(searchPaths) > 0 {
-		searchPath := searchPaths[0]
-		searchPaths = searchPaths[1:]
+func (g *GithubClient) firstFileSearch(repo string, minFileSize int, extensions []string,
+	searchPath string) (match []byte, err error) {
+	u := url.URL{
+		Scheme: "https",
+		Host:   "api.github.com",
+		Path:   path.Join("/repos", repo, "/contents", searchPath),
+	}
+	body, err := g.request(u.String())
+	if err != nil {
+		return nil, err
+	}
 
-		u := url.URL{
-			Scheme: "https",
-			Host:   "api.github.com",
-			Path:   path.Join("/repos", repo, "/contents", searchPath),
+	var result []entity
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, err
+	}
+
+	for _, ent := range result {
+		if ent.meetsSearchCriterion(minFileSize, extensions) {
+			return g.readFile(repo, ent.Path)
 		}
-		body, err := g.request(u.String())
-		if err != nil {
-			return nil, err
-		}
+	}
 
-		var result []entity
-		if err := json.Unmarshal(body, &result); err != nil {
-			return nil, err
-		}
+	sourceDirectoryHeuristic(result, repo)
 
-		for _, ent := range result {
-			if ent.meetsSearchCriterion(minFileSize, extensions) {
-				match = &ent
-				break BreadthFirstSearch
-			} else if ent.Type == "dir" {
-				searchPaths = append(searchPaths, path.Join(searchPath, ent.Name))
+	for _, ent := range result {
+		if ent.Dir() {
+			match, err = g.firstFileSearch(repo, minFileSize, extensions, ent.Path)
+			if match != nil || err != nil {
+				return
 			}
 		}
 	}
 
-	if match == nil {
-		return nil, nil
-	}
-
-	return g.readFile(repo, match.Path)
+	return nil, nil
 }
 
 func (g *GithubClient) readFile(repo, filePath string) ([]byte, error) {
@@ -161,6 +161,10 @@ type entity struct {
 	Type string `json:"type"`
 }
 
+func (e entity) Dir() bool {
+	return e.Type == "dir"
+}
+
 type fileEntity struct {
 	Content  string `json:"content"`
 	Encoding string `json:"encoding"`
@@ -179,4 +183,20 @@ func (e *entity) meetsSearchCriterion(minSize int, exts []string) bool {
 		}
 	}
 	return false
+}
+
+// sourceDirectoryHeuristic puts directories which are likely to contain source code at the
+// beginning of a list of entities.
+func sourceDirectoryHeuristic(results []entity, repoName string) {
+	sourceDirs := []string{"src", repoName, "lib", "com", "org", "net"}
+	numFound := 0
+	for _, sourceDir := range sourceDirs {
+		for i, ent := range results[numFound:] {
+			if ent.Dir() && ent.Name == sourceDir {
+				results[numFound], results[i] = results[i], results[numFound]
+				numFound++
+				break
+			}
+		}
+	}
 }
