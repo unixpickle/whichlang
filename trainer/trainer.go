@@ -10,8 +10,7 @@ import (
 )
 
 var gradientSolver = svm.GradientDescentSolver{
-	Steps:    100,
-	StepSize: 0.1,
+	Steps:    50000,
 	Tradeoff: 0.0001,
 }
 
