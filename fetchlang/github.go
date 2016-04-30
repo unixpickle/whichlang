@@ -1,124 +1,70 @@
 package main
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"path"
+	"os"
+	"regexp"
 	"strings"
+
+	"github.com/howeyc/gopass"
 )
 
-// A GithubClient uses the Github API on behalf of a given user.
+// A GithubClient uses the Github API
+// on behalf of a given user.
 type GithubClient struct {
 	User string
 	Pass string
 }
 
-// LanguageRepositories returns a list of repository names in the form "username/repository".
-func (g *GithubClient) LanguageRepositories(lang string) ([]string, error) {
-	u := url.URL{
-		Scheme: "https",
-		Host:   "api.github.com",
-		Path:   "search/repositories",
-		RawQuery: url.Values{
-			"order": []string{"desc"},
-			"q":     []string{"language:" + lang},
-		}.Encode(),
+// PromptGithubClient prompts the user for their
+// Github account details, then generates a
+// *GithubClient based on these details.
+func PromptGithubClient() (*GithubClient, error) {
+	fmt.Print("Username: ")
+	username := ""
+	for {
+		var ch [1]byte
+		_, err := os.Stdin.Read(ch[:])
+		if err != nil {
+			return nil, err
+		} else if ch[0] == '\n' {
+			break
+		} else if ch[0] == '\r' {
+			continue
+		}
+		username += string(ch[0])
 	}
-	body, err := g.request(u.String())
+
+	fmt.Print("Password: ")
+	password, err := gopass.GetPasswd()
 	if err != nil {
 		return nil, err
 	}
 
-	var obj langRepoList
-	if err := json.Unmarshal(body, &obj); err != nil {
-		return nil, err
-	}
-
-	res := make([]string, len(obj.Items))
-	for i, x := range obj.Items {
-		res[i] = x.FullName
-	}
-	return res, nil
+	return &GithubClient{
+		User: strings.TrimSpace(username),
+		Pass: string(password),
+	}, nil
 }
 
-// FirstFile scans the given repository and returns the contents of the first file which meet the
-// given criteria.
+// request accesses an API URL using the
+// user's credentials.
 //
-// This may return (nil, nil) if no file meeting the criteria was found, but no network error
-// occurred.
-func (g *GithubClient) FirstFile(repo string, minFileSize int,
-	extensions []string) ([]byte, error) {
-	return g.firstFileSearch(repo, minFileSize, extensions, "/")
-}
-
-func (g *GithubClient) firstFileSearch(repo string, minFileSize int, extensions []string,
-	searchPath string) (match []byte, err error) {
-	u := url.URL{
-		Scheme: "https",
-		Host:   "api.github.com",
-		Path:   path.Join("/repos", repo, "/contents", searchPath),
-	}
-	body, err := g.request(u.String())
-	if err != nil {
-		return nil, err
-	}
-
-	var result []entity
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-
-	for _, ent := range result {
-		if ent.meetsSearchCriterion(minFileSize, extensions) {
-			return g.readFile(repo, ent.Path)
-		}
-	}
-
-	sourceDirectoryHeuristic(result, repo)
-
-	for _, ent := range result {
-		if ent.Dir() {
-			match, err = g.firstFileSearch(repo, minFileSize, extensions, ent.Path)
-			if match != nil || err != nil {
-				return
-			}
-		}
-	}
-
-	return nil, nil
-}
-
-func (g *GithubClient) readFile(repo, filePath string) ([]byte, error) {
-	u := url.URL{
-		Scheme: "https",
-		Host:   "api.github.com",
-		Path:   path.Join("/repos", repo, "/contents", filePath),
-	}
-	body, err := g.request(u.String())
-	if err != nil {
-		return nil, err
-	}
-
-	var result fileEntity
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-
-	if result.Encoding == "base64" {
-		return base64.StdEncoding.DecodeString(result.Content)
-	} else {
-		return nil, errors.New("unknown encoding: " + result.Encoding)
-	}
-}
-
-func (g *GithubClient) request(u string) ([]byte, error) {
+// It returns an error if the request fails,
+// or if Github's API returns an error.
+//
+// Some requests are naturally paginated, in
+// which case the next return argument
+// corresponds to the URL of the next page.
+func (g *GithubClient) request(u string) (data []byte, next *url.URL, err error) {
 	req, err := http.NewRequest("GET", u, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	req.Header.Set("Accept", "application/vnd.github.preview.text-match+json")
 	req.SetBasicAuth(g.User, g.Pass)
@@ -127,76 +73,28 @@ func (g *GithubClient) request(u string) ([]byte, error) {
 		defer res.Body.Close()
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var raw map[string]interface{}
 	if err := json.Unmarshal(body, &raw); err == nil {
 		if message, ok := raw["message"]; ok {
 			if s, ok := message.(string); ok {
-				return nil, errors.New(s)
+				return nil, nil, errors.New(s)
 			}
 		}
 	}
 
-	return body, nil
-}
-
-type langRepoList struct {
-	Items []langRepoItem `json:"items"`
-}
-
-type langRepoItem struct {
-	FullName string `json:"full_name"`
-}
-
-type entity struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
-	Size int    `json:"size"`
-	Type string `json:"type"`
-}
-
-func (e entity) Dir() bool {
-	return e.Type == "dir"
-}
-
-type fileEntity struct {
-	Content  string `json:"content"`
-	Encoding string `json:"encoding"`
-}
-
-func (e *entity) meetsSearchCriterion(minSize int, exts []string) bool {
-	if e.Type != "file" {
-		return false
+	nextPattern := regexp.MustCompile("\\<(.*?)\\>; rel=\"next\"")
+	match := nextPattern.FindStringSubmatch(res.Header.Get("Link"))
+	if match != nil {
+		u, _ := url.Parse(match[1])
+		return body, u, nil
 	}
-	if e.Size < minSize {
-		return false
-	}
-	for _, ext := range exts {
-		if strings.HasSuffix(e.Name, "."+ext) {
-			return true
-		}
-	}
-	return false
-}
 
-// sourceDirectoryHeuristic puts directories which are likely to contain source code at the
-// beginning of a list of entities.
-func sourceDirectoryHeuristic(results []entity, repoName string) {
-	sourceDirs := []string{"src", repoName, "lib", "com", "org", "net"}
-	numFound := 0
-	for _, sourceDir := range sourceDirs {
-		for i, ent := range results[numFound:] {
-			if ent.Dir() && ent.Name == sourceDir {
-				results[numFound], results[i] = results[i], results[numFound]
-				numFound++
-				break
-			}
-		}
-	}
+	return body, nil, nil
 }

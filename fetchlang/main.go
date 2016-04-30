@@ -6,12 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
-
-	"github.com/howeyc/gopass"
 )
 
 const MinFileSize = 100
+const MaxFileSize = 500000
+const MaxRequestsPerRepo = 20
 
 type Language struct {
 	Name       string
@@ -47,55 +46,81 @@ var Languages = []Language{
 }
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "Usage: fetchlang <sample dir>")
+	if len(os.Args) != 3 {
+		fmt.Fprintln(os.Stderr, "Usage: fetchlang <sample dir> <sample count>")
 		os.Exit(1)
 	}
 	sampleDir := os.Args[1]
+	sampleCount, err := strconv.Atoi(os.Args[2])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Invalid sample count:", os.Args[2])
+		os.Exit(1)
+	}
 
-	fmt.Print("Username: ")
-	username := readInput()
-
-	fmt.Print("Password: ")
-	password, _ := gopass.GetPasswd()
-
-	client := &GithubClient{User: username, Pass: string(password)}
+	client, err := PromptGithubClient()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Failed to read credentials:", err)
+		os.Exit(1)
+	}
 
 	for _, lang := range Languages {
 		fmt.Println("Fetching samples for", lang.Name, "...")
-		repos, err := client.LanguageRepositories(lang.Name)
+		err := fetchLanguage(client, sampleDir, sampleCount, lang)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			continue
-		}
-		if err := os.Mkdir(filepath.Join(sampleDir, lang.Name), 0755); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			continue
-		}
-		for i, repo := range repos {
-			file, err := client.FirstFile(repo, MinFileSize, lang.Extensions)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				continue
-			}
-			if file == nil {
-				continue
-			}
-			targetFile := filepath.Join(sampleDir, lang.Name, strconv.Itoa(i)+"."+
-				lang.Extensions[0])
-			ioutil.WriteFile(targetFile, file, 0755)
+			fmt.Println("Error:", err)
 		}
 	}
 }
 
-func readInput() string {
-	res := ""
-	for {
-		var ch [1]byte
-		if _, err := os.Stdin.Read(ch[:]); err != nil || ch[0] == '\n' {
+func fetchLanguage(github *GithubClient, sampleDir string, count int, lang Language) error {
+	if err := os.Mkdir(filepath.Join(sampleDir, lang.Name), 0755); err != nil {
+		return err
+	}
+
+	doneChan := make(chan struct{}, 1)
+	repoChan, errChan := github.Search(lang.Name, doneChan)
+
+	defer func() {
+		close(doneChan)
+	}()
+
+	resCount := 0
+	for repo := range repoChan {
+		file, err := github.SearchFile(FileSearch{
+			Repository:  repo,
+			MinFileSize: MinFileSize,
+			MaxFileSize: MaxFileSize,
+			Extensions:  lang.Extensions,
+			MaxRequests: MaxRequestsPerRepo,
+		})
+		if err == ErrNoResults {
+			fmt.Println("No results for:", repo)
+			continue
+		} else if err == ErrMaxRequests {
+			fmt.Println("Max requests exceeded:", repo)
+			continue
+		} else if err != nil {
+			return err
+		} else if file == nil {
+			continue
+		}
+
+		fileName := fmt.Sprintf("%d.%s", resCount, lang.Extensions[0])
+		targetFile := filepath.Join(sampleDir, lang.Name, fileName)
+		if err := ioutil.WriteFile(targetFile, file, 0755); err != nil {
+			return err
+		}
+
+		resCount++
+		if resCount == count {
 			break
 		}
-		res += string(ch[0])
 	}
-	return strings.TrimSpace(res)
+
+	select {
+	case err := <-errChan:
+		return err
+	default:
+		return nil
+	}
 }
