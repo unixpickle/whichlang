@@ -8,16 +8,17 @@ import (
 	"os"
 
 	"github.com/unixpickle/whichlang"
+	"github.com/unixpickle/whichlang/tokens"
 )
 
 func main() {
-	if len(os.Args) != 4 {
-		fmt.Fprintln(os.Stderr, "Usage: server <classifier.json> <assets_dir> <port>")
+	if len(os.Args) != 5 {
+		fmt.Fprintln(os.Stderr, "Usage: server <algorithm> <classifier.json> <assets_dir> <port>")
 		os.Exit(1)
 	}
 
 	classifier := readClassifier()
-	assets := os.Args[2]
+	assets := os.Args[3]
 
 	http.HandleFunc("/classify", func(w http.ResponseWriter, r *http.Request) {
 		contents, err := ioutil.ReadAll(r.Body)
@@ -25,33 +26,40 @@ func main() {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		freqs := whichlang.ComputeFrequencies(string(contents))
-		lang, confidence := classifier.Classify(freqs)
-		jsonObj := map[string]interface{}{"lang": lang, "confidence": confidence}
+		counts := tokens.CountTokens(string(contents))
+		freqs := counts.Freqs()
+		lang := classifier.Classify(freqs)
+		jsonObj := map[string]interface{}{"lang": lang}
 		jsonData, _ := json.Marshal(jsonObj)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(jsonData)
 	})
 	http.Handle("/", http.FileServer(http.Dir(assets)))
 
-	if err := http.ListenAndServe(":"+os.Args[3], nil); err != nil {
+	if err := http.ListenAndServe(":"+os.Args[4], nil); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func readClassifier() *whichlang.Classifier {
-	data, err := ioutil.ReadFile(os.Args[1])
+func readClassifier() whichlang.Classifier {
+	decoder := whichlang.Decoders[os.Args[1]]
+	if decoder == nil {
+		fmt.Fprintln(os.Stderr, "Unknown algorithm:", os.Args[1])
+		os.Exit(1)
+	}
+
+	data, err := ioutil.ReadFile(os.Args[2])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	var classifier whichlang.Classifier
-	if err := json.Unmarshal(data, &classifier); err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to parse classifier:", err)
+	c, err := decoder(data)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	return &classifier
+	return c
 }

@@ -25,8 +25,7 @@
   function handleClassification(classification) {
     var obj = JSON.parse(classification);
 
-    classificationLabel.innerText = 'Classification: ' + obj.lang +
-      ' (confidence=' + obj.confidence + ')';
+    classificationLabel.innerText = 'Classification: ' + obj.lang;
     classificationLabel.style.display = 'block';
   }
 
