@@ -49,6 +49,35 @@ func (c *DataSet) TrainingScore(n *Network) float64 {
 	return scoreNetwork(n, c.TrainingSamples)
 }
 
+// Tokens returns all of the tokens from all
+// of the training samples.
+func (c *DataSet) Tokens() []string {
+	toks := map[string]bool{}
+	for _, samples := range c.TrainingSamples {
+		for _, sample := range samples {
+			for tok := range sample {
+				toks[tok] = true
+			}
+		}
+	}
+
+	res := make([]string, 0, len(toks))
+	for tok := range toks {
+		res = append(res, tok)
+	}
+	return res
+}
+
+// Langs returns all of the languages represented
+// by the training samples.
+func (c *DataSet) Langs() []string {
+	res := make([]string, 0, len(c.TrainingSamples))
+	for lang := range c.TrainingSamples {
+		res = append(res, lang)
+	}
+	return res
+}
+
 func scoreNetwork(n *Network, samples map[string][]tokens.Freqs) float64 {
 	var totalRight int
 	var total int

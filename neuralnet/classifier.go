@@ -14,10 +14,6 @@ type Network struct {
 	Tokens []string
 	Langs  []string
 
-	// HiddenCount is the number of hidden neurons
-	// in this network.
-	HiddenCount int
-
 	// In the following weights, the last weight for
 	// each neuron corresponds to a constant shift,
 	// and is not multiplied by an input's value.
@@ -37,9 +33,7 @@ func (n *Network) Classify(f tokens.Freqs) string {
 	outputSums := make([]*kahan.Summer64, len(n.OutputWeights))
 	for i := range outputSums {
 		outputSums[i] = kahan.NewSummer64()
-
-		// The last weight is a constant offset.
-		outputSums[i].Add(n.OutputWeights[i][len(n.Langs)])
+		outputSums[i].Add(n.outputBias(i))
 	}
 
 	for hiddenIndex, hiddenWeights := range n.HiddenWeights {
@@ -47,9 +41,7 @@ func (n *Network) Classify(f tokens.Freqs) string {
 		for j, token := range n.Tokens {
 			hiddenSum.Add(f[token] * hiddenWeights[j])
 		}
-
-		// The last weight is a constant offset.
-		hiddenSum.Add(hiddenWeights[len(n.Tokens)])
+		hiddenSum.Add(n.hiddenBias(hiddenIndex))
 
 		hiddenOut := sigmoid(hiddenSum.Sum())
 		for j, outSum := range outputSums {
@@ -72,6 +64,14 @@ func (n *Network) Classify(f tokens.Freqs) string {
 func (n *Network) Encode() []byte {
 	enc, _ := json.Marshal(n)
 	return enc
+}
+
+func (n *Network) outputBias(outputIdx int) float64 {
+	return n.OutputWeights[outputIdx][len(n.Langs)]
+}
+
+func (n *Network) hiddenBias(hiddenIdx int) float64 {
+	return n.HiddenWeights[hiddenIdx][len(n.Tokens)]
 }
 
 func sigmoid(x float64) float64 {
