@@ -2,20 +2,12 @@ package neuralnet
 
 import (
 	"log"
-	"math"
 	"math/rand"
-	"os"
 
 	"github.com/unixpickle/whichlang/tokens"
 )
 
 const InitialIterationCount = 200
-const DefaultMaxIterations = 6400
-
-// VerboseEnvVar is an environment variable
-// which can be set to "1" to make the
-// neuralnet print out status reports.
-var VerboseEnvVar = "NEURALNET_VERBOSE"
 
 // HiddenLayerScale specifies how much larger
 // the hidden layer is than the output layer.
@@ -28,16 +20,15 @@ func Train(data map[string][]tokens.Freqs) *Network {
 	var bestCrossScore float64
 	var bestTrainScore float64
 
-	verbose := os.Getenv(VerboseEnvVar) == "1"
+	verbose := verboseFlag()
 
-	for stepPower := -20; stepPower < 10; stepPower++ {
-		stepSize := math.Pow(2, float64(stepPower))
+	for _, stepSize := range stepSizes() {
 		if verbose {
 			log.Printf("trying step size %f", stepSize)
 		}
 
 		t := NewTrainer(ds, stepSize, verbose)
-		t.Train(DefaultMaxIterations)
+		t.Train(maxIterations())
 
 		n := t.Network()
 		if n.containsNaN() {
@@ -109,6 +100,10 @@ func (t *Trainer) Train(maxIters int) {
 		iters = maxIters
 	}
 	for i := 0; i < iters; i++ {
+		if verboseStepsFlag() {
+			log.Printf("done %d iterations, cross=%f training=%f",
+				i, t.d.CrossScore(t.n), t.d.TrainingScore(t.n))
+		}
 		t.runAllSamples()
 	}
 	if iters == maxIters {
@@ -136,6 +131,10 @@ func (t *Trainer) Train(maxIters int) {
 			nextAmount = maxIters - iters
 		}
 		for i := 0; i < nextAmount; i++ {
+			if verboseStepsFlag() {
+				log.Printf("done %d iterations, cross=%f training=%f",
+					i+iters, t.d.CrossScore(t.n), t.d.TrainingScore(t.n))
+			}
 			t.runAllSamples()
 			if t.n.containsNaN() {
 				break
