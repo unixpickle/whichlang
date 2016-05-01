@@ -1,8 +1,11 @@
 package neuralnet
 
 import (
+	"math"
 	"math/rand"
+	"sort"
 
+	"github.com/unixpickle/num-analysis/kahan"
 	"github.com/unixpickle/whichlang/tokens"
 )
 
@@ -11,8 +14,14 @@ const ValidationFraction = 0.3
 // A DataSet is a set of data split into training
 // samples and validation samples.
 type DataSet struct {
-	ValidationSamples map[string][]tokens.Freqs
-	TrainingSamples   map[string][]tokens.Freqs
+	ValidationSamples     map[string][]tokens.Freqs
+	TrainingSamples       map[string][]tokens.Freqs
+	NormalTrainingSamples map[string][][]float64
+
+	// These are statistical properties of the
+	// training samples' frequency values.
+	MeanFrequency   float64
+	FrequencyStddev float64
 }
 
 // NewDataSet creates a DataSet by randomly
@@ -34,6 +43,10 @@ func NewDataSet(samples map[string][]tokens.Freqs) *DataSet {
 		res.ValidationSamples[lang] = shuffled[:numValid]
 		res.TrainingSamples[lang] = shuffled[numValid:]
 	}
+
+	res.computeStatistics()
+	res.computeNormalSamples()
+
 	return res
 }
 
@@ -65,6 +78,7 @@ func (c *DataSet) Tokens() []string {
 	for tok := range toks {
 		res = append(res, tok)
 	}
+	sort.Strings(res)
 	return res
 }
 
@@ -75,7 +89,54 @@ func (c *DataSet) Langs() []string {
 	for lang := range c.TrainingSamples {
 		res = append(res, lang)
 	}
+	sort.Strings(res)
 	return res
+}
+
+func (c *DataSet) computeStatistics() {
+	tokens := c.Tokens()
+
+	freqSum := kahan.NewSummer64()
+	freqCount := 0
+	for _, langSamples := range c.TrainingSamples {
+		for _, sample := range langSamples {
+			freqCount += len(tokens)
+			for _, freq := range sample {
+				freqSum.Add(freq)
+			}
+		}
+	}
+
+	c.MeanFrequency = freqSum.Sum() / float64(freqCount)
+
+	variationSum := kahan.NewSummer64()
+	for _, langSamples := range c.TrainingSamples {
+		for _, sample := range langSamples {
+			for _, token := range tokens {
+				freq := sample[token]
+				variationSum.Add(math.Pow(freq-c.MeanFrequency, 2))
+			}
+		}
+	}
+
+	c.FrequencyStddev = math.Sqrt(variationSum.Sum() / float64(freqCount))
+}
+
+func (c *DataSet) computeNormalSamples() {
+	c.NormalTrainingSamples = map[string][][]float64{}
+	tokens := c.Tokens()
+
+	for lang, langSamples := range c.TrainingSamples {
+		sampleList := make([][]float64, len(langSamples))
+		for i, sample := range langSamples {
+			sampleVec := make([]float64, len(tokens))
+			for j, token := range tokens {
+				sampleVec[j] = (sample[token] - c.MeanFrequency) / c.FrequencyStddev
+			}
+			sampleList[i] = sampleVec
+		}
+		c.NormalTrainingSamples[lang] = sampleList
+	}
 }
 
 func scoreNetwork(n *Network, samples map[string][]tokens.Freqs) float64 {

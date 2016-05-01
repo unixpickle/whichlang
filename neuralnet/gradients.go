@@ -4,7 +4,6 @@ import (
 	"math"
 
 	"github.com/unixpickle/num-analysis/kahan"
-	"github.com/unixpickle/whichlang/tokens"
 )
 
 // A gradientCalc can compute gradients of the
@@ -33,7 +32,6 @@ func newGradientCalc(n *Network) *gradientCalc {
 		n:                 n,
 		hiddenOutputs:     make([]float64, len(n.HiddenWeights)),
 		outputs:           make([]float64, len(n.OutputWeights)),
-		inputs:            make([]float64, len(n.Tokens)),
 		expectedOut:       make([]float64, len(n.OutputWeights)),
 		hiddenOutPartials: make([]float64, len(n.HiddenWeights)),
 		OutputPartials:    make([][]float64, len(n.OutputWeights)),
@@ -44,16 +42,14 @@ func newGradientCalc(n *Network) *gradientCalc {
 		res.OutputPartials[i] = make([]float64, len(res.hiddenOutputs)+1)
 	}
 	for i := range res.HiddenPartials {
-		res.HiddenPartials[i] = make([]float64, len(res.inputs)+1)
+		res.HiddenPartials[i] = make([]float64, len(n.Tokens)+1)
 	}
 
 	return res
 }
 
-func (g *gradientCalc) Compute(f tokens.Freqs, langIdx int) {
-	for j, token := range g.n.Tokens {
-		g.inputs[j] = f[token]
-	}
+func (g *gradientCalc) Compute(inputs []float64, langIdx int) {
+	g.inputs = inputs
 	for j := range g.expectedOut {
 		if j == langIdx {
 			g.expectedOut[j] = 1

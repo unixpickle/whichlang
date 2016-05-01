@@ -7,7 +7,7 @@ import (
 	"github.com/unixpickle/whichlang/tokens"
 )
 
-const InitialIterationCount = 2000
+const InitialIterationCount = 200
 const DefaultMaxIterations = 6400
 
 // HiddenLayerScale specifies how much larger
@@ -59,6 +59,8 @@ func NewTrainer(d *DataSet, stepSize float64) *Trainer {
 		Langs:         d.Langs(),
 		HiddenWeights: make([][]float64, hiddenCount),
 		OutputWeights: make([][]float64, len(d.TrainingSamples)),
+		InputShift:    -d.MeanFrequency,
+		InputScale:    1 / d.FrequencyStddev,
 	}
 	for i := range n.OutputWeights {
 		n.OutputWeights[i] = make([]float64, hiddenCount+1)
@@ -108,10 +110,14 @@ func (t *Trainer) Train(maxIters int) {
 		}
 		for i := 0; i < nextAmount; i++ {
 			t.runAllSamples()
+			if t.n.containsNaN() {
+				break
+			}
 		}
 		iters += nextAmount
 
 		if t.n.containsNaN() {
+			t.n = lastNet
 			break
 		}
 
@@ -139,7 +145,7 @@ func (t *Trainer) Network() *Network {
 
 func (t *Trainer) runAllSamples() {
 	for i, lang := range t.n.Langs {
-		samples := t.d.TrainingSamples[lang]
+		samples := t.d.NormalTrainingSamples[lang]
 		for _, sample := range samples {
 			t.descendSample(sample, i)
 		}
@@ -148,8 +154,8 @@ func (t *Trainer) runAllSamples() {
 
 // descendSample performs gradient descent to
 // reduce the output error for a given sample.
-func (t *Trainer) descendSample(f tokens.Freqs, langIdx int) {
-	t.g.Compute(f, langIdx)
+func (t *Trainer) descendSample(inputs []float64, langIdx int) {
+	t.g.Compute(inputs, langIdx)
 	t.g.Normalize()
 
 	for i, partials := range t.g.HiddenPartials {

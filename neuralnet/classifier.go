@@ -19,6 +19,12 @@ type Network struct {
 	// and is not multiplied by an input's value.
 	HiddenWeights [][]float64
 	OutputWeights [][]float64
+
+	// Information used to centralize the training
+	// weights around 0 and get them to have a
+	// standard deviation of 1.
+	InputShift float64
+	InputScale float64
 }
 
 func DecodeNetwork(data []byte) (*Network, error) {
@@ -35,6 +41,8 @@ func (n *Network) Copy() *Network {
 		Langs:         make([]string, len(n.Langs)),
 		HiddenWeights: make([][]float64, len(n.HiddenWeights)),
 		OutputWeights: make([][]float64, len(n.OutputWeights)),
+		InputShift:    n.InputShift,
+		InputScale:    n.InputScale,
 	}
 	copy(res.Tokens, n.Tokens)
 	copy(res.Langs, n.Langs)
@@ -49,7 +57,9 @@ func (n *Network) Copy() *Network {
 	return res
 }
 
-func (n *Network) Classify(f tokens.Freqs) string {
+func (n *Network) Classify(freqs tokens.Freqs) string {
+	inputs := n.shiftedInput(freqs)
+
 	outputSums := make([]*kahan.Summer64, len(n.OutputWeights))
 	for i := range outputSums {
 		outputSums[i] = kahan.NewSummer64()
@@ -58,8 +68,8 @@ func (n *Network) Classify(f tokens.Freqs) string {
 
 	for hiddenIndex, hiddenWeights := range n.HiddenWeights {
 		hiddenSum := kahan.NewSummer64()
-		for j, token := range n.Tokens {
-			hiddenSum.Add(f[token] * hiddenWeights[j])
+		for j, input := range inputs {
+			hiddenSum.Add(input * hiddenWeights[j])
 		}
 		hiddenSum.Add(n.hiddenBias(hiddenIndex))
 
@@ -105,6 +115,14 @@ func (n *Network) containsNaN() bool {
 		}
 	}
 	return false
+}
+
+func (n *Network) shiftedInput(f tokens.Freqs) []float64 {
+	res := make([]float64, len(n.Tokens))
+	for i, word := range n.Tokens {
+		res[i] = (f[word] + n.InputShift) * n.InputScale
+	}
+	return res
 }
 
 func sigmoid(x float64) float64 {
