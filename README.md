@@ -1,5 +1,3 @@
 # whichlang
 
-This is an attempt to use machine learning to detect which programming language a string is.
-
-As part of this project, I will make a tool to fetch code samples from Github.
+This is a collection of Machine Learning algorithms to identify which programming language a piece of code is written in. It includes tools for gathering, processing, and classifying programming language samples.

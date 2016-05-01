@@ -8,6 +8,9 @@ import (
 	"github.com/unixpickle/whichlang/tokens"
 )
 
+// Train returns a *Classifier which is the
+// result of running ID3 on a set of training
+// samples.
 func Train(freqs map[string][]tokens.Freqs) *Classifier {
 	allWords := map[string]bool{}
 	entryCount := 0
