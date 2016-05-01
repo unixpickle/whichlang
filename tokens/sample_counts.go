@@ -51,6 +51,20 @@ func ReadSampleCounts(sampleDir string) (SampleCounts, error) {
 	return res, nil
 }
 
+// NumTokens returns the number of unique
+// tokens in all the documents.
+func (s SampleCounts) NumTokens() int {
+	toks := map[string]bool{}
+	for _, samples := range s {
+		for _, sample := range samples {
+			for word := range sample {
+				toks[word] = true
+			}
+		}
+	}
+	return len(toks)
+}
+
 // Prune removes tokens which appear in n
 // documents or fewer.
 func (s SampleCounts) Prune(n int) {
