@@ -85,10 +85,14 @@ func (s SampleCounts) Prune(n int) {
 	}
 
 	for _, samples := range s {
-		for _, sample := range samples {
-			for word := range remove {
-				delete(sample, word)
+		for i, sample := range samples {
+			newSample := map[string]int{}
+			for word, count := range sample {
+				if !remove[word] {
+					newSample[word] = count
+				}
 			}
+			samples[i] = newSample
 		}
 	}
 }
