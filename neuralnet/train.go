@@ -1,14 +1,21 @@
 package neuralnet
 
 import (
+	"log"
 	"math"
 	"math/rand"
+	"os"
 
 	"github.com/unixpickle/whichlang/tokens"
 )
 
 const InitialIterationCount = 200
 const DefaultMaxIterations = 6400
+
+// VerboseEnvVar is an environment variable
+// which can be set to "1" to make the
+// neuralnet print out status reports.
+var VerboseEnvVar = "NEURALNET_VERBOSE"
 
 // HiddenLayerScale specifies how much larger
 // the hidden layer is than the output layer.
@@ -21,18 +28,30 @@ func Train(data map[string][]tokens.Freqs) *Network {
 	var bestCrossScore float64
 	var bestTrainScore float64
 
+	verbose := os.Getenv(VerboseEnvVar) == "1"
+
 	for stepPower := -20; stepPower < 10; stepPower++ {
 		stepSize := math.Pow(2, float64(stepPower))
+		if verbose {
+			log.Printf("trying step size %f", stepSize)
+		}
 
-		t := NewTrainer(ds, stepSize)
+		t := NewTrainer(ds, stepSize, verbose)
 		t.Train(DefaultMaxIterations)
 
 		n := t.Network()
 		if n.containsNaN() {
+			if verbose {
+				log.Printf("got NaN for step size %f", stepSize)
+			}
 			continue
 		}
 		crossScore := ds.CrossScore(n)
 		trainScore := ds.TrainingScore(n)
+		if verbose {
+			log.Printf("stepSize=%f crossScore=%f trainScore=%f", stepSize,
+				crossScore, trainScore)
+		}
 		if (crossScore == bestCrossScore && trainScore >= bestTrainScore) ||
 			best == nil || (crossScore > bestCrossScore) {
 			bestCrossScore = crossScore
@@ -50,9 +69,10 @@ type Trainer struct {
 	g *gradientCalc
 
 	stepSize float64
+	verbose  bool
 }
 
-func NewTrainer(d *DataSet, stepSize float64) *Trainer {
+func NewTrainer(d *DataSet, stepSize float64, verbose bool) *Trainer {
 	hiddenCount := int(HiddenLayerScale * float64(len(d.TrainingSamples)))
 	n := &Network{
 		Tokens:        d.Tokens(),
@@ -79,6 +99,7 @@ func NewTrainer(d *DataSet, stepSize float64) *Trainer {
 		d:        d,
 		g:        newGradientCalc(n),
 		stepSize: stepSize,
+		verbose:  verbose,
 	}
 }
 
@@ -103,7 +124,13 @@ func (t *Trainer) Train(maxIters int) {
 	crossScore := t.d.CrossScore(t.n)
 	trainScore := t.d.TrainingScore(t.n)
 	lastNet := t.n.Copy()
+
 	for {
+		if t.verbose {
+			log.Printf("current scores: cross=%f train=%f iters=%d",
+				crossScore, trainScore, iters)
+		}
+
 		nextAmount := iters
 		if nextAmount+iters > maxIters {
 			nextAmount = maxIters - iters
