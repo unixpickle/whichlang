@@ -1,19 +1,18 @@
 package neuralnet
 
 import (
+	"math"
 	"math/rand"
 
 	"github.com/unixpickle/whichlang/tokens"
 )
 
-const InitialIterationCount = 100
+const InitialIterationCount = 2000
 const DefaultMaxIterations = 6400
 
 // HiddenLayerScale specifies how much larger
 // the hidden layer is than the output layer.
 const HiddenLayerScale = 2.0
-
-var StepSizes = []float64{1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2}
 
 func Train(data map[string][]tokens.Freqs) *Network {
 	ds := NewDataSet(data)
@@ -22,11 +21,16 @@ func Train(data map[string][]tokens.Freqs) *Network {
 	var bestCrossScore float64
 	var bestTrainScore float64
 
-	for _, stepSize := range StepSizes {
+	for stepPower := -20; stepPower < 10; stepPower++ {
+		stepSize := math.Pow(2, float64(stepPower))
+
 		t := NewTrainer(ds, stepSize)
 		t.Train(DefaultMaxIterations)
 
 		n := t.Network()
+		if n.containsNaN() {
+			continue
+		}
 		crossScore := ds.CrossScore(n)
 		trainScore := ds.TrainingScore(n)
 		if (crossScore == bestCrossScore && trainScore >= bestTrainScore) ||
@@ -59,13 +63,13 @@ func NewTrainer(d *DataSet, stepSize float64) *Trainer {
 	for i := range n.OutputWeights {
 		n.OutputWeights[i] = make([]float64, hiddenCount+1)
 		for j := range n.OutputWeights {
-			n.OutputWeights[i][j] = rand.Float64()
+			n.OutputWeights[i][j] = rand.Float64()*2 - 1
 		}
 	}
 	for i := range n.HiddenWeights {
 		n.HiddenWeights[i] = make([]float64, len(n.Tokens)+1)
 		for j := range n.HiddenWeights[i] {
-			n.HiddenWeights[i][j] = rand.Float64()
+			n.HiddenWeights[i][j] = rand.Float64()*2 - 1
 		}
 	}
 	return &Trainer{
@@ -88,10 +92,15 @@ func (t *Trainer) Train(maxIters int) {
 		return
 	}
 
+	if t.n.containsNaN() {
+		return
+	}
+
 	// Use cross-validation to find the best
 	// number of iterations.
 	crossScore := t.d.CrossScore(t.n)
 	trainScore := t.d.TrainingScore(t.n)
+	lastNet := t.n.Copy()
 	for {
 		nextAmount := iters
 		if nextAmount+iters > maxIters {
@@ -102,7 +111,7 @@ func (t *Trainer) Train(maxIters int) {
 		}
 		iters += nextAmount
 
-		if iters == maxIters {
+		if t.n.containsNaN() {
 			break
 		}
 
@@ -110,11 +119,17 @@ func (t *Trainer) Train(maxIters int) {
 		newTrainScore := t.d.TrainingScore(t.n)
 		if (newCrossScore == crossScore && newTrainScore == trainScore) ||
 			newCrossScore < crossScore {
-			break
+			t.n = lastNet
+			return
 		}
 
 		crossScore = newCrossScore
 		trainScore = newTrainScore
+
+		if iters == maxIters {
+			return
+		}
+		lastNet = t.n.Copy()
 	}
 }
 
@@ -135,6 +150,8 @@ func (t *Trainer) runAllSamples() {
 // reduce the output error for a given sample.
 func (t *Trainer) descendSample(f tokens.Freqs, langIdx int) {
 	t.g.Compute(f, langIdx)
+	t.g.Normalize()
+
 	for i, partials := range t.g.HiddenPartials {
 		for j, partial := range partials {
 			t.n.HiddenWeights[i][j] -= partial * t.stepSize

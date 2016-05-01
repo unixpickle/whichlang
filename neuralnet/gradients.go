@@ -1,6 +1,8 @@
 package neuralnet
 
 import (
+	"math"
+
 	"github.com/unixpickle/num-analysis/kahan"
 	"github.com/unixpickle/whichlang/tokens"
 )
@@ -64,6 +66,29 @@ func (g *gradientCalc) Compute(f tokens.Freqs, langIdx int) {
 	g.computeGradients()
 }
 
+// Normalize normalizes the gradient using
+// the Euclidean norm.
+func (g *gradientCalc) Normalize() {
+	sum := kahan.NewSummer64()
+	for _, xss := range [][][]float64{g.HiddenPartials, g.OutputPartials} {
+		for _, xs := range xss {
+			for _, x := range xs {
+				sum.Add(x * x)
+			}
+		}
+	}
+
+	normalizer := 1.0 / math.Sqrt(sum.Sum())
+
+	for _, xss := range [][][]float64{g.HiddenPartials, g.OutputPartials} {
+		for _, xs := range xss {
+			for i, x := range xs {
+				xs[i] = x * normalizer
+			}
+		}
+	}
+}
+
 func (g *gradientCalc) computeOutputs() {
 	outputSums := make([]*kahan.Summer64, len(g.outputs))
 
@@ -88,7 +113,7 @@ func (g *gradientCalc) computeOutputs() {
 	}
 
 	for i, sum := range outputSums {
-		g.outputs[i] = sum.Sum()
+		g.outputs[i] = sigmoid(sum.Sum())
 	}
 }
 

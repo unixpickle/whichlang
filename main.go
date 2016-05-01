@@ -4,6 +4,7 @@ package whichlang
 
 import (
 	"github.com/unixpickle/whichlang/idtree"
+	"github.com/unixpickle/whichlang/neuralnet"
 	"github.com/unixpickle/whichlang/tokens"
 )
 
@@ -30,13 +31,16 @@ type Decoder func(d []byte) (Classifier, error)
 
 // ClassifierNames is an array containing the
 // names of every supported classifier.
-var ClassifierNames = []string{"idtree"}
+var ClassifierNames = []string{"idtree", "neuralnet"}
 
 // Trainers maps classifier names to their
 // corresponding Trainers.
 var Trainers = map[string]Trainer{
 	"idtree": func(freqs map[string][]tokens.Freqs) Classifier {
 		return idtree.Train(freqs)
+	},
+	"neuralnet": func(freqs map[string][]tokens.Freqs) Classifier {
+		return neuralnet.Train(freqs)
 	},
 }
 
@@ -46,10 +50,14 @@ var Decoders = map[string]Decoder{
 	"idtree": func(d []byte) (Classifier, error) {
 		return idtree.DecodeClassifier(d)
 	},
+	"neuralnet": func(d []byte) (Classifier, error) {
+		return neuralnet.DecodeNetwork(d)
+	},
 }
 
 // Descriptions maps classifier names to
 // one-line descriptions of the classifier.
 var Descriptions = map[string]string{
-	"idtree": "use ID3 to make decision trees",
+	"idtree":    "use ID3 to make decision trees",
+	"neuralnet": "feedforward neural network",
 }
