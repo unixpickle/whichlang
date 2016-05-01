@@ -34,7 +34,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Println("Pruning tokens...")
 	counts.Prune(PruneCount)
+	fmt.Println("Training...")
+
 	freqs := counts.SampleFreqs()
 	classifier := trainer(freqs)
 	data := classifier.Encode()
@@ -55,5 +58,6 @@ func dieUsage() {
 		}
 		fmt.Fprintln(os.Stderr, " "+name+spaces, whichlang.Descriptions[name])
 	}
+	fmt.Fprintln(os.Stderr, "")
 	os.Exit(1)
 }

@@ -13,7 +13,7 @@ import (
 
 func main() {
 	if len(os.Args) != 5 {
-		fmt.Fprintln(os.Stderr, "Usage: server <algorithm> <classifier.json> <assets_dir> <port>")
+		fmt.Fprintln(os.Stderr, "Usage: server <algorithm> <classifier-file> <assets_dir> <port>")
 		os.Exit(1)
 	}
 
