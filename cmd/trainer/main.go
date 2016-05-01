@@ -44,7 +44,8 @@ func main() {
 	fmt.Println("Pruning tokens...")
 	counts.Prune(ubiquity)
 	newCount := counts.NumTokens()
-	fmt.Printf("Pruned %d/%d tokens.\n", (oldCount - newCount), oldCount)
+	fmt.Printf("Pruned %d/%d tokens (%d left).\n", (oldCount - newCount),
+		oldCount, newCount)
 
 	freqs := counts.SampleFreqs()
 
