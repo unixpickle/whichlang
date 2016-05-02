@@ -97,7 +97,7 @@ func (n *Network) Encode() []byte {
 }
 
 func (n *Network) outputBias(outputIdx int) float64 {
-	return n.OutputWeights[outputIdx][len(n.Langs)]
+	return n.OutputWeights[outputIdx][len(n.HiddenWeights)]
 }
 
 func (n *Network) hiddenBias(hiddenIdx int) float64 {

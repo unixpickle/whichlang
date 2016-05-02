@@ -75,7 +75,7 @@ func NewTrainer(d *DataSet, stepSize float64, verbose bool) *Trainer {
 	}
 	for i := range n.OutputWeights {
 		n.OutputWeights[i] = make([]float64, hiddenCount+1)
-		for j := range n.OutputWeights {
+		for j := range n.OutputWeights[i] {
 			n.OutputWeights[i][j] = rand.Float64()*2 - 1
 		}
 	}
