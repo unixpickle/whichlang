@@ -9,10 +9,6 @@ import (
 
 const InitialIterationCount = 200
 
-// HiddenLayerScale specifies how much larger
-// the hidden layer is than the output layer.
-const HiddenLayerScale = 2.0
-
 func Train(data map[string][]tokens.Freqs) *Network {
 	ds := NewDataSet(data)
 
@@ -64,7 +60,7 @@ type Trainer struct {
 }
 
 func NewTrainer(d *DataSet, stepSize float64, verbose bool) *Trainer {
-	hiddenCount := int(HiddenLayerScale * float64(len(d.TrainingSamples)))
+	hiddenCount := hiddenSize(len(d.TrainingSamples))
 	n := &Network{
 		Tokens:        d.Tokens(),
 		Langs:         d.Langs(),

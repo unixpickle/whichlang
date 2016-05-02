@@ -8,6 +8,11 @@ import (
 
 const DefaultMaxIterations = 6400
 
+// DefaultHiddenLayerScale specifies how much
+// larger the hidden layer is than the output
+// layer, by default.
+const DefaultHiddenLayerScale = 2.0
+
 // VerboseEnvVar is an environment variable
 // which can be set to "1" to make the
 // neuralnet print out status reports.
@@ -28,6 +33,10 @@ var StepSizeEnvVar = "NEURALNET_STEP_SIZE"
 // specifying the maximum number of iterations
 // of gradient descent to perform.
 var MaxItersEnvVar = "NEURALNET_MAX_ITERS"
+
+// HiddenSizeEnvVar is an environment variable
+// specifying the number of hidden neurons.
+var HiddenSizeEnvVar = "NEURALNET_HIDDEN_SIZE"
 
 func verboseFlag() bool {
 	return os.Getenv(VerboseEnvVar) == "1"
@@ -58,6 +67,18 @@ func maxIterations() int {
 		return DefaultMaxIterations
 	} else {
 		val, err := strconv.Atoi(max)
+		if err != nil {
+			panic(err)
+		}
+		return val
+	}
+}
+
+func hiddenSize(outputCount int) int {
+	if size := os.Getenv(HiddenSizeEnvVar); size == "" {
+		return int(float64(outputCount)*DefaultHiddenLayerScale + 0.5)
+	} else {
+		val, err := strconv.Atoi(size)
 		if err != nil {
 			panic(err)
 		}
