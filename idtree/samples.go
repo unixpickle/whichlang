@@ -1,4 +1,4 @@
-package whichlang
+package idtree
 
 import "github.com/unixpickle/whichlang/tokens"
 

@@ -79,9 +79,14 @@ func splitData(s []linearSample, tokIdx int, thresh float64) (f, t []linearSampl
 // criterion of entropy).
 // If no split exists, this returns (-1, -1).
 func bestDecision(s []linearSample) (tokIdx int, thresh float64) {
-	maxProcs := runtime.GOMAXPROCS(0)
+	if len(s) == 0 {
+		return -1, -1
+	}
 
-	toksPerGo := len(toks) / maxProcs
+	maxProcs := runtime.GOMAXPROCS(0)
+	tokenCount := len(s[0].freqs)
+
+	toksPerGo := tokenCount / maxProcs
 	splitChan := make(chan *splitInfo, maxProcs)
 	for i := 0; i < maxProcs; i++ {
 		tokCount := toksPerGo
@@ -90,7 +95,7 @@ func bestDecision(s []linearSample) (tokIdx int, thresh float64) {
 		// The last set might need to be slightly larger
 		// due to division truncation.
 		if i == maxProcs-1 {
-			tokCount = len(toks) - tokStart
+			tokCount = tokenCount - tokStart
 		}
 
 		go bestNodeSubset(tokStart, tokCount, s, splitChan)
@@ -140,10 +145,10 @@ func bestNodeSubset(startIdx, count int, s []linearSample, res chan<- *splitInfo
 // samples by a given token (specified by an index).
 // This returns the threshold and the resulting entropy.
 // The threshold will be -1 if no split is useful.
-func bestSplit(s []linearSample, tokenIdx int) (thres float64, entrop float64) {
+func bestSplit(s []linearSample, tokenIdx int) (thresh float64, entrop float64) {
 	sortedArray := make([]linearSample, len(s))
 	copy(sortedArray, s)
-	sorter := &sampleSorter{sortedGroup, tokenIdx}
+	sorter := &sampleSorter{sortedArray, tokenIdx}
 	sort.Sort(sorter)
 
 	lowerDistribution := map[string]int{}
@@ -167,8 +172,8 @@ func bestSplit(s []linearSample, tokenIdx int) (thres float64, entrop float64) {
 
 	lastFreq := sortedArray[0].freqs[tokenIdx]
 	for i := 1; i < len(s); i++ {
-		upperDistribution[s[i-1].freqs[tokenIdx]]--
-		lowerDistribution[s[i-1].freqs[tokenIdx]]++
+		upperDistribution[s[i-1].lang]--
+		lowerDistribution[s[i-1].lang]++
 
 		freq := s[i].freqs[tokenIdx]
 		if freq == lastFreq {
