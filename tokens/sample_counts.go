@@ -67,6 +67,10 @@ func (s SampleCounts) NumTokens() int {
 
 // Prune removes tokens which appear in n
 // documents or fewer.
+//
+// This creates a "" token in each document
+// corresponding to the number of pruned
+// tokens from that document.
 func (s SampleCounts) Prune(n int) {
 	docCount := map[string]int{}
 	for _, samples := range s {
@@ -87,10 +91,16 @@ func (s SampleCounts) Prune(n int) {
 	for _, samples := range s {
 		for i, sample := range samples {
 			newSample := map[string]int{}
+			removed := 0
 			for word, count := range sample {
 				if !remove[word] {
 					newSample[word] = count
+				} else {
+					removed += count
 				}
+			}
+			if removed > 0 {
+				newSample[""] += removed
 			}
 			samples[i] = newSample
 		}
@@ -99,11 +109,15 @@ func (s SampleCounts) Prune(n int) {
 
 // SampleFreqs converts every Counts object
 // in s into a Freqs object.
+// The "" key in each Freqs object is deleted
+// if one exists.
 func (s SampleCounts) SampleFreqs() map[string][]Freqs {
 	res := map[string][]Freqs{}
 	for lang, samples := range s {
 		for _, sample := range samples {
-			res[lang] = append(res[lang], sample.Freqs())
+			f := sample.Freqs()
+			delete(f, "")
+			res[lang] = append(res[lang], f)
 		}
 	}
 	return res
