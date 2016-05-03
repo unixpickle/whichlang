@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sort"
 
 	"github.com/unixpickle/whichlang"
 	"github.com/unixpickle/whichlang/tokens"
@@ -56,8 +57,45 @@ func main() {
 	fmt.Printf("Success rate: %d/%d or %0.2f%%\n", totalSuccesses, totalSamples,
 		100*float64(totalSuccesses)/float64(totalSamples))
 
+	sorter := RatingSorter{Ratings: make([]Rating, 0, len(samples))}
 	for lang, s := range samples {
-		fmt.Printf("%s - success rate %d/%d or %0.2f%%\n", lang, langSuccesses[lang],
-			len(s), 100*float64(langSuccesses[lang])/float64(len(s)))
+		r := Rating{
+			Language: lang,
+			Correct:  langSuccesses[lang],
+			Total:    len(s),
+		}
+		sorter.Ratings = append(sorter.Ratings, r)
 	}
+	sort.Sort(sorter)
+
+	for _, rating := range sorter.Ratings {
+		fmt.Printf("%s - success rate %d/%d or %0.2f%%\n", rating.Language,
+			rating.Correct, rating.Total, 100*rating.Frac())
+	}
+}
+
+type Rating struct {
+	Language string
+	Correct  int
+	Total    int
+}
+
+func (r Rating) Frac() float64 {
+	return float64(r.Correct) / float64(r.Total)
+}
+
+type RatingSorter struct {
+	Ratings []Rating
+}
+
+func (r RatingSorter) Len() int {
+	return len(r.Ratings)
+}
+
+func (r RatingSorter) Less(i, j int) bool {
+	return r.Ratings[i].Frac() > r.Ratings[j].Frac()
+}
+
+func (r RatingSorter) Swap(i, j int) {
+	r.Ratings[i], r.Ratings[j] = r.Ratings[j], r.Ratings[i]
 }
