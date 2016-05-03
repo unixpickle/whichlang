@@ -145,16 +145,16 @@ func bestNodeSubset(startIdx, count int, s []linearSample, res chan<- *splitInfo
 // samples by a given token (specified by an index).
 // This returns the threshold and the resulting entropy.
 // The threshold will be -1 if no split is useful.
-func bestSplit(s []linearSample, tokenIdx int) (thresh float64, entrop float64) {
-	sortedArray := make([]linearSample, len(s))
-	copy(sortedArray, s)
-	sorter := &sampleSorter{sortedArray, tokenIdx}
+func bestSplit(unsorted []linearSample, tokenIdx int) (thresh float64, entrop float64) {
+	samples := make([]linearSample, len(unsorted))
+	copy(samples, unsorted)
+	sorter := &sampleSorter{samples, tokenIdx}
 	sort.Sort(sorter)
 
 	lowerDistribution := map[string]int{}
 	upperDistribution := map[string]int{}
 
-	for _, sample := range sortedArray {
+	for _, sample := range samples {
 		upperDistribution[sample.lang]++
 	}
 
@@ -166,22 +166,22 @@ func bestSplit(s []linearSample, tokenIdx int) (thresh float64, entrop float64) 
 	thresh = -1
 	entrop = -1
 
-	if len(sortedArray) == 0 {
+	if len(samples) == 0 {
 		return
 	}
 
-	lastFreq := sortedArray[0].freqs[tokenIdx]
-	for i := 1; i < len(s); i++ {
-		upperDistribution[s[i-1].lang]--
-		lowerDistribution[s[i-1].lang]++
+	lastFreq := samples[0].freqs[tokenIdx]
+	for i := 1; i < len(samples); i++ {
+		upperDistribution[samples[i-1].lang]--
+		lowerDistribution[samples[i-1].lang]++
 
-		freq := s[i].freqs[tokenIdx]
+		freq := samples[i].freqs[tokenIdx]
 		if freq == lastFreq {
 			continue
 		}
 
-		upperFrac := float64(len(s)-i) / float64(len(s))
-		lowerFrac := float64(i) / float64(len(s))
+		upperFrac := float64(len(samples)-i) / float64(len(samples))
+		lowerFrac := float64(i) / float64(len(samples))
 		disorder := upperFrac*distributionEntropy(upperDistribution) +
 			lowerFrac*distributionEntropy(lowerDistribution)
 		if disorder < entrop || thresh == -1 {
