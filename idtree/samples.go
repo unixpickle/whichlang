@@ -8,7 +8,7 @@ type linearSample struct {
 }
 
 func freqsToLinearSamples(toks []string, freqs map[string][]tokens.Freqs) []linearSample {
-	res := make([]linearSample, 0)
+	var res []linearSample
 	for lang, freqsList := range freqs {
 		for _, freqs := range freqsList {
 			s := linearSample{
@@ -18,6 +18,7 @@ func freqsToLinearSamples(toks []string, freqs map[string][]tokens.Freqs) []line
 			for i, tok := range toks {
 				s.freqs[i] = freqs[tok]
 			}
+			res = append(res, s)
 		}
 	}
 	return res
