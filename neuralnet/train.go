@@ -166,11 +166,28 @@ func (t *Trainer) Network() *Network {
 }
 
 func (t *Trainer) runAllSamples() {
+	var samples []struct {
+		LangIdx int
+		Sample  []float64
+	}
+
 	for i, lang := range t.n.Langs {
-		samples := t.d.NormalTrainingSamples[lang]
-		for _, sample := range samples {
-			t.descendSample(sample, i)
+		var sample struct {
+			LangIdx int
+			Sample  []float64
 		}
+		sample.LangIdx = i
+
+		trainingSamples := t.d.NormalTrainingSamples[lang]
+		for _, s := range trainingSamples {
+			sample.Sample = s
+			samples = append(samples, sample)
+		}
+	}
+
+	perm := rand.Perm(len(samples))
+	for _, i := range perm {
+		t.descendSample(samples[i].Sample, samples[i].LangIdx)
 	}
 }
 
