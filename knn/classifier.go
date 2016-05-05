@@ -7,43 +7,48 @@ import (
 	"github.com/unixpickle/whichlang/tokens"
 )
 
+type Sample struct {
+	Language string
+	Vector   linalg.Vector
+}
+
 type Classifier struct {
-	Keywords []string
-	Samples  map[string][]linalg.Vector
+	Tokens  []string
+	Samples []Sample
 
 	NeighborCount int
 }
 
 func (c *Classifier) Classify(f tokens.Freqs) string {
-	vec := make(linalg.Vector, len(c.Keywords))
-	for i, keyw := range c.Keywords {
+	vec := make(linalg.Vector, len(c.Tokens))
+	for i, keyw := range c.Tokens {
 		vec[i] = f[keyw]
 	}
 
 	vecMag := vec.Dot(vec)
 	if vecMag == 0 {
-		for lang := range c.Samples {
-			return lang
-		}
+		return c.Samples[0].Language
 	}
 	vec.Scale(1 / math.Sqrt(vecMag))
 
+	return c.classifyVector(vec)
+}
+
+func (c *Classifier) classifyVector(vec linalg.Vector) string {
 	matches := make([]match, 0, c.NeighborCount)
-	for lang, samples := range c.Samples {
-		for _, sample := range samples {
-			correlation := sample.Dot(vec)
-			insertIdx := matchInsertionIndex(matches, correlation)
-			if insertIdx >= c.NeighborCount {
-				continue
-			}
-			if len(matches) < c.NeighborCount {
-				matches = append(matches, match{})
-			}
-			copy(matches[insertIdx+1:], matches[insertIdx:])
-			matches[insertIdx] = match{
-				Language:    lang,
-				Correlation: correlation,
-			}
+	for _, sample := range c.Samples {
+		correlation := sample.Vector.Dot(vec)
+		insertIdx := matchInsertionIndex(matches, correlation)
+		if insertIdx >= c.NeighborCount {
+			continue
+		}
+		if len(matches) < c.NeighborCount {
+			matches = append(matches, match{})
+		}
+		copy(matches[insertIdx+1:], matches[insertIdx:])
+		matches[insertIdx] = match{
+			Language:    sample.Language,
+			Correlation: correlation,
 		}
 	}
 
