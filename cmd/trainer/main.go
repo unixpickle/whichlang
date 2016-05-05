@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/unixpickle/whichlang"
 	"github.com/unixpickle/whichlang/tokens"
@@ -13,6 +15,10 @@ import (
 const HelpColumnSize = 10
 
 func main() {
+	// Several machine learning algorithms depend on
+	// random starting positions.
+	rand.Seed(time.Now().UnixNano())
+
 	if len(os.Args) != 5 {
 		dieUsage()
 	}

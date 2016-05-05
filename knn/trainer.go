@@ -2,15 +2,16 @@ package knn
 
 import (
 	"math/rand"
+	"sort"
 
 	"github.com/unixpickle/num-analysis/linalg"
 	"github.com/unixpickle/whichlang/tokens"
 )
 
-// crossCorrelationFrac specifies the fraction of
+// crossValidationFrac specifies the fraction of
 // samples which are used for cross-validation
 // when determining the optimal k-value.
-const crossCorrelationFrac = 0.3
+const crossValidationFrac = 0.3
 
 func Train(f map[string][]tokens.Freqs) *Classifier {
 	seenToks := map[string]bool{}
@@ -55,7 +56,7 @@ func Train(f map[string][]tokens.Freqs) *Classifier {
 }
 
 func optimalKValue(s []Sample) int {
-	crossCount := int(crossCorrelationFrac * float64(len(s)))
+	crossCount := int(crossValidationFrac * float64(len(s)))
 	if crossCount == 0 {
 		return 1
 	}
@@ -63,17 +64,16 @@ func optimalKValue(s []Sample) int {
 	crossSamples := samples[0:crossCount]
 	trainingSamples := samples[crossCount:]
 
-	c := &Classifier{
-		Samples: trainingSamples,
-	}
+	crossMatches := sortedCrossMatches(crossSamples, trainingSamples)
 
 	bestK := 1
 	bestCorrect := 0
 	for k := 1; k <= len(trainingSamples); k++ {
 		crossCorrect := 0
-		c.NeighborCount = k
-		for _, cross := range crossSamples {
-			if c.classifyVector(cross.Vector) == cross.Language {
+		for crossIdx, matches := range crossMatches {
+			classification := dominantClassification(matches[:k])
+			actualLang := crossSamples[crossIdx].Language
+			if classification == actualLang {
 				crossCorrect++
 			}
 		}
@@ -86,6 +86,22 @@ func optimalKValue(s []Sample) int {
 	return bestK
 }
 
+func sortedCrossMatches(cross, training []Sample) [][]match {
+	res := make([][]match, len(cross))
+	for i, crossSample := range cross {
+		res[i] = make([]match, len(training))
+		for j, trainingSample := range training {
+			correlation := trainingSample.Vector.Dot(crossSample.Vector)
+			res[i][j] = match{
+				Language:    trainingSample.Language,
+				Correlation: correlation,
+			}
+		}
+		sort.Sort(matchSorter(res[i]))
+	}
+	return res
+}
+
 func shuffleSamples(s []Sample) []Sample {
 	res := make([]Sample, len(s))
 
@@ -95,4 +111,18 @@ func shuffleSamples(s []Sample) []Sample {
 	}
 
 	return res
+}
+
+type matchSorter []match
+
+func (m matchSorter) Len() int {
+	return len(m)
+}
+
+func (m matchSorter) Less(i, j int) bool {
+	return m[i].Correlation > m[j].Correlation
+}
+
+func (m matchSorter) Swap(i, j int) {
+	m[i], m[j] = m[j], m[i]
 }

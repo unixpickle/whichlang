@@ -1,6 +1,7 @@
 package knn
 
 import (
+	"encoding/json"
 	"math"
 
 	"github.com/unixpickle/num-analysis/linalg"
@@ -19,6 +20,14 @@ type Classifier struct {
 	NeighborCount int
 }
 
+func DecodeClassifier(d []byte) (*Classifier, error) {
+	var res Classifier
+	if err := json.Unmarshal(d, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
 func (c *Classifier) Classify(f tokens.Freqs) string {
 	vec := make(linalg.Vector, len(c.Tokens))
 	for i, keyw := range c.Tokens {
@@ -32,6 +41,11 @@ func (c *Classifier) Classify(f tokens.Freqs) string {
 	vec.Scale(1 / math.Sqrt(vecMag))
 
 	return c.classifyVector(vec)
+}
+
+func (c *Classifier) Encode() []byte {
+	data, _ := json.Marshal(c)
+	return data
 }
 
 func (c *Classifier) classifyVector(vec linalg.Vector) string {
@@ -52,6 +66,10 @@ func (c *Classifier) classifyVector(vec linalg.Vector) string {
 		}
 	}
 
+	return dominantClassification(matches)
+}
+
+func dominantClassification(matches []match) string {
 	scores := map[string]float64{}
 	for _, m := range matches {
 		scores[m.Language] += m.Correlation
