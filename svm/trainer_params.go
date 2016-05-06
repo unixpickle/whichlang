@@ -6,7 +6,10 @@ import (
 	"strconv"
 )
 
-const defaultTradeoff = 0.001
+const (
+	defaultTradeoff                = 1e-5
+	defaultCrossValidationFraction = 0.3
+)
 
 var (
 	defaultRBFParams  = [][]float64{{1e-5}, {1e-4}, {1e-3}, {1e-2}, {1e-1}, {1e0}, {1e1}, {1e2}}
@@ -40,6 +43,10 @@ const (
 	// margin size, but at the expense of correct
 	// classifications.
 	TradeoffEnvVar = "SVM_TRADEOFF"
+
+	// The fraction (from 0-1) of samples which are
+	// used for cross validation.
+	CrossValidationEnvVar = "SVM_CROSS_VALIDATION"
 )
 
 // TrainerParams specifies parameters for the
@@ -48,6 +55,8 @@ type TrainerParams struct {
 	Verbose  bool
 	Kernels  []*Kernel
 	Tradeoff float64
+
+	CrossValidation float64
 }
 
 // EnvTrainerParams generates TrainerParams
@@ -61,6 +70,9 @@ func EnvTrainerParams() (*TrainerParams, error) {
 	var err error
 
 	if res.Tradeoff, err = envTradeoff(); err != nil {
+		return nil, err
+	}
+	if res.CrossValidation, err = envCrossValidation(); err != nil {
 		return nil, err
 	}
 	res.Verbose = (os.Getenv(VerboseEnvVar) == "1")
@@ -95,6 +107,14 @@ func envTradeoff() (float64, error) {
 	}
 }
 
+func envCrossValidation() (float64, error) {
+	if val := os.Getenv(CrossValidationEnvVar); val != "" {
+		return strconv.ParseFloat(val, 64)
+	} else {
+		return defaultCrossValidationFraction, nil
+	}
+}
+
 func envKernelTypes() ([]KernelType, error) {
 	if val := os.Getenv(KernelEnvVar); val != "" {
 		res, ok := map[string]KernelType{
@@ -115,7 +135,7 @@ func envKernelTypes() ([]KernelType, error) {
 func envKernelParams(t KernelType) ([][]float64, error) {
 	switch t {
 	case LinearKernel:
-		return [][]float64{}, nil
+		return [][]float64{{}}, nil
 	case RadialBasisKernel:
 		if val := os.Getenv(RBFParamEnvVar); val != "" {
 			res, err := strconv.ParseFloat(val, 64)

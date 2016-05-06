@@ -6,6 +6,7 @@ import (
 	"github.com/unixpickle/whichlang/idtree"
 	"github.com/unixpickle/whichlang/knn"
 	"github.com/unixpickle/whichlang/neuralnet"
+	"github.com/unixpickle/whichlang/svm"
 	"github.com/unixpickle/whichlang/tokens"
 )
 
@@ -32,7 +33,7 @@ type Decoder func(d []byte) (Classifier, error)
 
 // ClassifierNames is an array containing the
 // names of every supported classifier.
-var ClassifierNames = []string{"idtree", "neuralnet", "knn"}
+var ClassifierNames = []string{"idtree", "neuralnet", "knn", "svm"}
 
 // Trainers maps classifier names to their
 // corresponding Trainers.
@@ -45,6 +46,9 @@ var Trainers = map[string]Trainer{
 	},
 	"knn": func(freqs map[string][]tokens.Freqs) Classifier {
 		return knn.Train(freqs)
+	},
+	"svm": func(freqs map[string][]tokens.Freqs) Classifier {
+		return svm.Train(freqs)
 	},
 }
 
@@ -60,12 +64,16 @@ var Decoders = map[string]Decoder{
 	"knn": func(d []byte) (Classifier, error) {
 		return knn.DecodeClassifier(d)
 	},
+	"svm": func(d []byte) (Classifier, error) {
+		return svm.DecodeClassifier(d)
+	},
 }
 
 // Descriptions maps classifier names to
 // one-line descriptions of the classifier.
 var Descriptions = map[string]string{
-	"idtree":    "use ID3 to make decision trees",
+	"idtree":    "decision trees generated with ID3",
 	"neuralnet": "feedforward neural network",
 	"knn":       "K-nearest neighbors",
+	"svm":       "support vector machines",
 }

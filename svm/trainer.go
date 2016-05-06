@@ -10,7 +10,6 @@ import (
 	"github.com/unixpickle/whichlang/tokens"
 )
 
-const crossValidationFraction = 0.3
 const farAwayTimeout = time.Hour * 24 * 365
 
 func Train(data map[string][]tokens.Freqs) *Classifier {
@@ -22,7 +21,7 @@ func Train(data map[string][]tokens.Freqs) *Classifier {
 }
 
 func TrainParams(data map[string][]tokens.Freqs, p *TrainerParams) *Classifier {
-	crossFreqs, trainingFreqs := partitionSamples(data, crossValidationFraction)
+	crossFreqs, trainingFreqs := partitionSamples(data, p.CrossValidation)
 	tokens, samples := vectorizeSamples(trainingFreqs)
 
 	solver := svm.GradientDescentSolver{
