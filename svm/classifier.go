@@ -9,6 +9,20 @@ import (
 	"github.com/unixpickle/whichlang/tokens"
 )
 
+// BinaryClassifier stores info for the
+// binary classifiers used in a Classifier.
+type BinaryClassifier struct {
+	// SupportVectors stores indices to
+	// elements of Classifier.SampleVectors.
+	SupportVectors []int
+
+	// Weights are the corresponding weights
+	// for each of the support vectors.
+	Weights []float64
+
+	Threshold float64
+}
+
 // Classifier uses one-against-all SVMs to
 // classify source files.
 type Classifier struct {
@@ -20,17 +34,7 @@ type Classifier struct {
 	// Classifiers maps each language to its
 	// corresponding one-against-all binary
 	// classifier.
-	Classifiers map[string]struct {
-		// SupportVectors stores indices to
-		// elements of SampleVectors above.
-		SupportVectors []int
-
-		// Weights are the corresponding weights
-		// for each of the support vectors.
-		Weights []float64
-
-		Threshold float64
-	}
+	Classifiers map[string]BinaryClassifier
 }
 
 func DecodeClassifier(d []byte) (*Classifier, error) {
