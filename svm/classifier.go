@@ -71,6 +71,14 @@ func (c *Classifier) Encode() []byte {
 	return res
 }
 
+func (c *Classifier) Languages() []string {
+	res := make([]string, 0, len(c.Classifiers))
+	for lang := range c.Classifiers {
+		res = append(res, lang)
+	}
+	return res
+}
+
 func (c *Classifier) sampleProducts(sample tokens.Freqs) []float64 {
 	vec := c.sampleVector(sample)
 	res := make([]float64, len(c.SampleVectors))

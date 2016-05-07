@@ -96,6 +96,10 @@ func (n *Network) Encode() []byte {
 	return enc
 }
 
+func (n *Network) Languages() []string {
+	return n.Langs
+}
+
 func (n *Network) outputBias(outputIdx int) float64 {
 	return n.OutputWeights[outputIdx][len(n.HiddenWeights)]
 }

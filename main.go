@@ -18,6 +18,13 @@ type Classifier interface {
 	// most likely written in.
 	Classify(tokens.Freqs) string
 
+	// Languages returns all possible languages
+	// that Classify() might return.
+	// The result is not sorted, and its order
+	// may change across calls.
+	// Callers should not modify the returned slice.
+	Languages() []string
+
 	// Encode serializes this classifier as binary
 	// data.
 	Encode() []byte

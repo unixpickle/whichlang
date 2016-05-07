@@ -48,6 +48,18 @@ func (c *Classifier) Encode() []byte {
 	return data
 }
 
+func (c *Classifier) Languages() []string {
+	seenLangs := map[string]bool{}
+	for _, sample := range c.Samples {
+		seenLangs[sample.Language] = true
+	}
+	res := make([]string, 0, len(seenLangs))
+	for lang := range seenLangs {
+		res = append(res, lang)
+	}
+	return res
+}
+
 func (c *Classifier) classifyVector(vec linalg.Vector) string {
 	matches := make([]match, 0, c.NeighborCount)
 	for _, sample := range c.Samples {
