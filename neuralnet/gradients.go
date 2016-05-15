@@ -1,10 +1,6 @@
 package neuralnet
 
-import (
-	"math"
-
-	"github.com/unixpickle/num-analysis/kahan"
-)
+import "github.com/unixpickle/num-analysis/kahan"
 
 // A gradientCalc can compute gradients of the
 // error function 0.5*||Actual - Expected||^2
@@ -60,29 +56,6 @@ func (g *gradientCalc) Compute(inputs []float64, langIdx int) {
 
 	g.computeOutputs()
 	g.computeGradients()
-}
-
-// Normalize normalizes the gradient using
-// the Euclidean norm.
-func (g *gradientCalc) Normalize() {
-	sum := kahan.NewSummer64()
-	for _, xss := range [][][]float64{g.HiddenPartials, g.OutputPartials} {
-		for _, xs := range xss {
-			for _, x := range xs {
-				sum.Add(x * x)
-			}
-		}
-	}
-
-	normalizer := 1.0 / math.Sqrt(sum.Sum())
-
-	for _, xss := range [][][]float64{g.HiddenPartials, g.OutputPartials} {
-		for _, xs := range xss {
-			for i, x := range xs {
-				xs[i] = x * normalizer
-			}
-		}
-	}
 }
 
 func (g *gradientCalc) computeOutputs() {

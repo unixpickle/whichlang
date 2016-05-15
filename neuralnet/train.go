@@ -195,7 +195,6 @@ func (t *Trainer) runAllSamples() {
 // reduce the output error for a given sample.
 func (t *Trainer) descendSample(inputs []float64, langIdx int) {
 	t.g.Compute(inputs, langIdx)
-	t.g.Normalize()
 
 	for i, partials := range t.g.HiddenPartials {
 		for j, partial := range partials {
