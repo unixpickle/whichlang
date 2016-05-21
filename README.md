@@ -12,7 +12,7 @@ int main(int argc, const char ** argv) {
 }
 ```
 
-The goal of `whichlang` is to teach a program to do the same. By showing a Machine Learning algorithm a ton of code, it can *learn* to identify programming languages itself.
+The goal of `whichlang` is to teach a program to do the same. By showing a Machine Learning algorithm a ton of code, you can teach it *learn* to identify programming languages itself.
 
 # Usage
 
@@ -64,15 +64,15 @@ For any classifier you use, you must choose a "ubiquity" value. Since whichlang 
 
 ### Support Vector Machines
 
-The most basic way to train a Support Vector Machine is to allow whichlang to select all the hyper-parameters for you. Note, however, that this option is *very* slow, so you may want to keep reading.
+The easiest way to train a Support Vector Machine is to allow whichlang to select all the hyper-parameters for you. Note, however, that this option is *very* slow, so you may want to keep reading.
 
 ```
 $ go run cmd/trainer/*.go svm 15 /path/to/samples /path/to/classifier.json
 ```
 
-In the above command, I specified a ubiquity of 15 files. This command will go through many different possible SVM configurations, choosing the one which performs the best on new samples (as measured via cross-validation). Since this command has to try many possible configurations, it will take a long time to run. I have already gone through the trouble of finding ideal parameters, and I will now share my results.
+In the above command, I specified a ubiquity of 15 files. This will train an SVM on the given sample directory, outputing a classifier to `/path/to/classifier.json`. As this command runs, it will go through many different possible SVM configurations, choosing the one which performs the best on new samples (as measured via cross-validation). Since this command has to try many possible configurations, it will take a long time to run (perhaps hours or even days). I have already gone through the trouble of finding good parameters, and I will now share my results.
 
-I have found that a linear SVM works fairly well for programming language classification. In particular, I've gotten a linear SVM to achieve a 93% success rate on new samples, and most of those mistakes were reasonable (e.g. mistaking C for C++, or mistaking Ruby for CoffeeScript). To train a linear SVM, you can set the `SVM_KERNEL` environment variable before running the `trainer` sub-command:
+I have found that a linear SVM works fairly well for programming language classification. In particular, I've gotten a linear SVM to reach a 93% success rate on new samples, and most of those mistakes were reasonable (e.g. mistaking C for C++, or mistaking Ruby for CoffeeScript). To train a linear SVM, you can set the `SVM_KERNEL` environment variable before running the `trainer` sub-command:
 
 ```
 $ export SVM_KERNEL=linear
@@ -84,7 +84,15 @@ If you want verbose output during training, you can specify another environment 
 $ export SVM_VERBOSE=1
 ```
 
-For other SVM environment variables (e.g. for other kernels) you can checkout [this list](https://godoc.org/github.com/unixpickle/whichlang/svm#pkg-constants).
+Once you have trained a linear SVM, you can perform a special compression step which will make the classifier faster and smaller. This is a technique which only works for linear SVMs! Run the following command:
+
+```
+$ go run cmd/svm-shrink/*.go /path/to/classifier.json /path/to/optimized.json
+```
+
+This will create a classifier file at `/path/to/optimized.json` which is the optimized version of `/path/to/classifier.json`. **Remember, this only works for linear SVMs.**
+
+For other SVM environment variables you can checkout [this list](https://godoc.org/github.com/unixpickle/whichlang/svm#pkg-constants).
 
 ### Artificial Neural Networks
 
@@ -98,6 +106,8 @@ $ export NEURALNET_MAX_ITERS=100
 $ export NEURALNET_HIDDEN_SIZE=150
 $ go run cmd/trainer/*.go neuralnet 15 /path/to/samples /path/to/classifier.json
 ```
+
+For more ANN environment variables you can checkout [this list](https://godoc.org/github.com/unixpickle/whichlang/neuralnet#pkg-variables).
 
 ## Using a classifier
 
