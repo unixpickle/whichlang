@@ -20,7 +20,7 @@ type Gaussian struct {
 // density function at a given x value.
 func (g Gaussian) EvalLog(x float64) float64 {
 	coeff := 1 / math.Sqrt(2*g.Variance*math.Pi)
-	exp := -(x - g.Mean) / (2 * g.Variance)
+	exp := -math.Pow(x-g.Mean, 2) / (2 * g.Variance)
 	return math.Log(coeff) + exp
 }
 
